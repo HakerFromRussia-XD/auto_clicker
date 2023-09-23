@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+* Copyright (C) 2023 Kevin Buzeau
+*
+* This program is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-->
+<resources>
+
+    <!-- Application wide texts. -->
+    <string name="activity_title">场景列表</string>
+    <string name="notification_title">场景: %1$s</string>
+    <string name="notification_message">点击停止运行</string>
+    <string name="accessibility_service_description">该应用需要无障碍服务来实现自动点击。
+        一旦条件被检测到，便会执行由您创建的，位于其他应用上的点击列表。\n\n 该应用没有收集任何数据。 您可以自行访问我们的GitHub，代码是开源的!</string>
+
+    <!--
+      - Titles for the dialogs displayed from the activity.
+      - Regular Android dialog title characters size.
+      -->
+    <string name="dialog_title_add_scenario">新建脚本</string>
+    <string name="dialog_title_permissions">需要以下权限</string>
+
+    <!--
+      - Text for menu items.
+      - Should be short and concise.
+      -->
+    <string name="menu_item_title_export">导出</string>
+    <string name="menu_item_title_import">导入</string>
+    <string name="menu_item_title_select_all">全选</string>
+
+    <!--
+      - Text for items in a list or vertical layout.
+      -  * Title should be short and concise.
+      -  * Desc can have more space to describe the title
+      -->
+    <string name="item_desc_permissions">Smart AutoClicker 将使用以下权限</string>
+    <string name="item_desc_permission_overlay">允许该应用显示在其他应用的上层以得知您点按的位置</string>
+    <string name="item_desc_permission_accessibility">通过”无障碍“服务模拟点击某个位置。</string>
+    <string name="item_desc_permission_notification">可选：在应用程序运行时显示通知。</string>
+    <string name="item_title_permission_accessibility">无障碍服务</string>
+    <string name="item_title_permission_notification">通知</string>
+    <string name="item_title_permission_overlay">显示在其他应用的上层</string>
+
+    <!--
+      - Empty list messages.
+      - Views handles any length here, so no limitations.
+      -->
+    <string name="message_empty_scenario_list">尝试创建第一个场景来实现自动化任务吧(*^▽^*)</string>
+
+    <!--
+      - Messages.
+      - Views handles any length here, so no limitations.
+      -->
+    <string name="message_delete_scenario">是否删除场景： %1$s ？</string>
+    <string name="message_error_screen_capture_permission_dialog_not_found">您的设备不提供标准的 Android 屏幕捕获权限对话框。 Smart AutoClicker 将无法在其上运行。</string>
+
+    <!--
+      - Toast messages.
+      - Can be pretty long (2 lines).
+      -->
+    <string name="toast_denied_screen_sharing_permission">用户拒绝屏幕共享权限</string>
+    <string name="toast_denied_foreground_permission">用户拒绝前台服务权限</string>
+
+    <!--
+      - TextButton content.
+      - Should be short and concise.
+      -->
+    <string name="button_text_create_scenario">创建脚本</string>
+
+    <!--
+      - Content description texts.
+      - They are use as accessibility texts for visually impaired people. They will not be displayed but spoken.
+      -->
+    <string name="content_desc_add_scenario">创建一个新脚本</string>
+    <string name="content_desc_overlay_state">悬浮窗权限状态</string>
+    <string name="content_desc_accessibility_state">无障碍服务权限状态</string>
+
+</resources>
