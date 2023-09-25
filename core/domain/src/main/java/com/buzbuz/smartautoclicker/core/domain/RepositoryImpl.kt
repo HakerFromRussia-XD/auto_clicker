@@ -39,7 +39,6 @@ import com.buzbuz.smartautoclicker.core.mapList
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.mapNotNull
 
-// TODO: We should clean unused bitmaps, it can happens that some stays there
 /**
  * Repository for the database and bitmap manager.
  * Provide the access to the scenario, events, actions and conditions from the database and the conditions bitmap from

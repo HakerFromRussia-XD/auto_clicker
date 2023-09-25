@@ -27,6 +27,8 @@ import com.buzbuz.smartautoclicker.core.display.DisplayRecorder
 import com.buzbuz.smartautoclicker.core.display.DisplayMetrics
 import com.buzbuz.smartautoclicker.core.detection.ImageDetector
 import com.buzbuz.smartautoclicker.core.detection.NativeDetector
+import com.buzbuz.smartautoclicker.core.domain.Repository
+import com.buzbuz.smartautoclicker.core.domain.model.Identifier
 import com.buzbuz.smartautoclicker.core.domain.model.endcondition.EndCondition
 import com.buzbuz.smartautoclicker.core.domain.model.event.Event
 import com.buzbuz.smartautoclicker.core.domain.model.scenario.Scenario
@@ -146,7 +148,7 @@ internal class DetectorEngine(context: Context) {
      * @param bitmapSupplier provides the conditions bitmaps.
      * @param progressListener object to notify upon start/completion of detections steps.
      */
-    fun startDetection(
+    suspend fun startDetection(
         context: Context,
         scenario: Scenario,
         events: List<Event>,
@@ -162,6 +164,8 @@ internal class DetectorEngine(context: Context) {
         _state.value = DetectorState.TRANSITIONING
 
         Log.i(TAG, "startDetection")
+
+
 
         processingScope?.launchProcessingJob {
             val detector = NativeDetector()

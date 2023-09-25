@@ -99,10 +99,12 @@ class MainMenu(private val onStopClicked: () -> Unit) : OverlayMenu() {
         super.onCreate()
 
         // Ensure the debug view state is correct
+        // Убедитесь, что состояние отладочного представления корректно
         viewBinding.layoutDebug.visibility = View.GONE
         setOverlayViewVisibility(View.GONE)
 
         // When the billing flow is not longer displayed, restore the dialogs states
+        // Когда поток выставления счетов перестанет отображаться, восстановите состояния диалогов
         lifecycleScope.launch {
             repeatOnLifecycle((Lifecycle.State.CREATED)) {
                 viewModel.isBillingFlowInProgress.collect { isDisplayed ->
@@ -116,6 +118,7 @@ class MainMenu(private val onStopClicked: () -> Unit) : OverlayMenu() {
             }
         }
 
+        //обработка нажатия на кнопочку плэй плавающей меню
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch { viewModel.canStartScenario.collect(::updatePlayPauseButtonEnabledState) }

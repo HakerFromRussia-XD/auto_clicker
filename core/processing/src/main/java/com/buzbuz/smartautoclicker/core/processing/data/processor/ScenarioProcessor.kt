@@ -111,10 +111,12 @@ internal class ScenarioProcessor(
 
             // Event conditions verification
             progressListener?.onEventProcessingStarted(event)
-            val conditionAreFulfilled = verifyConditions(event)
+            //TODO отключил поиск совпадения по картинке
+            val conditionAreFulfilled = true//verifyConditions(event) // тип?
             progressListener?.onEventProcessingCompleted(event, conditionAreFulfilled, processingResults.getFirstMatchResult())
 
             // If conditions are fulfilled, execute this event's actions !
+            // Если условия выполнены, выполнить действия этого события !
             if (conditionAreFulfilled) {
                 event.actions.let { actions ->
                     actionExecutor.executeActions(event, actions, processingResults)

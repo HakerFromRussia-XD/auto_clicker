@@ -18,11 +18,23 @@ package com.buzbuz.smartautoclicker
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
+import android.annotation.SuppressLint
 import android.app.*
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothGatt
+import android.bluetooth.BluetoothGattCallback
+import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothGattDescriptor
+import android.bluetooth.BluetoothGattService
+import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.media.projection.MediaProjectionManager
+import android.os.Binder
 import android.os.Build
+import android.os.IBinder
 import android.util.AndroidRuntimeException
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
@@ -39,6 +51,11 @@ import com.buzbuz.smartautoclicker.core.processing.data.AndroidExecutor
 import com.buzbuz.smartautoclicker.core.processing.domain.DetectionRepository
 import com.buzbuz.smartautoclicker.core.ui.overlays.manager.OverlayManager
 import com.buzbuz.smartautoclicker.feature.floatingmenu.ui.MainMenu
+import com.buzbuz.smartautoclicker.my.SampleGattAttributes
+import com.buzbuz.smartautoclicker.my.SampleGattAttributes.MIO_MEASUREMENT_NEW_VM
+import com.buzbuz.smartautoclicker.my.SampleGattAttributes.NOTIFY
+import com.buzbuz.smartautoclicker.my.SampleGattAttributes.READ
+import com.buzbuz.smartautoclicker.my.SampleGattAttributes.WRITE
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -50,6 +67,7 @@ import kotlinx.coroutines.launch
 
 import java.io.FileDescriptor
 import java.io.PrintWriter
+import java.util.UUID
 
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
@@ -71,6 +89,14 @@ import kotlin.coroutines.suspendCoroutine
 class SmartAutoClickerService : AccessibilityService(), AndroidExecutor {
 
     companion object {
+        const val ACTION_GATT_CONNECTED = "com.example.bluetooth.le.ACTION_GATT_CONNECTED"
+        const val ACTION_GATT_DISCONNECTED = "com.example.bluetooth.le.ACTION_GATT_DISCONNECTED"
+        const val ACTION_GATT_SERVICES_DISCOVERED = "com.example.bluetooth.le.ACTION_GATT_SERVICES_DISCOVERED"
+        const val ACTION_DATA_AVAILABLE = "com.example.bluetooth.le.ACTION_DATA_AVAILABLE"
+        const val SENSORS_DATA_THREAD_FLAG = "com.example.bluetooth.le.SENSORS_DATA_THREAD_FLAG"
+
+        const val MIO_DATA_NEW = "com.example.bluetooth.le.MIO_DATA_NEW"
+
         /** The identifier for the foreground notification of this service. */
         private const val NOTIFICATION_ID = 42
         /** The channel identifier for the foreground notification of this service. */
@@ -196,6 +222,10 @@ class SmartAutoClickerService : AccessibilityService(), AndroidExecutor {
         super.onServiceConnected()
         serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
         LOCAL_SERVICE_INSTANCE = LocalService()
+
+        //мой код
+        initialize()
+        connect("7C:E9:1A:25:4E:A5")//""F4:50:E7:B1:20:50")//тут указываем мак к которому подключаемся
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
@@ -203,6 +233,7 @@ class SmartAutoClickerService : AccessibilityService(), AndroidExecutor {
         LOCAL_SERVICE_INSTANCE = null
         serviceScope?.cancel()
         serviceScope = null
+        close()
         return super.onUnbind(intent)
     }
 
@@ -287,6 +318,248 @@ class SmartAutoClickerService : AccessibilityService(), AndroidExecutor {
 
     override fun onInterrupt() { /* Unused */ }
     override fun onAccessibilityEvent(event: AccessibilityEvent?) { /* Unused */ }
+
+
+
+
+    private val STATE_DISCONNECTED = 0
+    private val STATE_CONNECTING = 1
+    private val STATE_CONNECTED = 2
+
+    private var mBluetoothManager: BluetoothManager? = null
+    private var mBluetoothAdapter: BluetoothAdapter? = null
+    private var mBluetoothDeviceAddress: String? = null
+    private var mBluetoothGatt: BluetoothGatt? = null
+    private var mConnectionState = this.STATE_DISCONNECTED
+
+    private fun broadcastUpdate(characteristic: BluetoothGattCharacteristic, state: String) {
+        val intent = Intent(ACTION_DATA_AVAILABLE)
+        val data = characteristic.value
+        if (data != null && data.isNotEmpty()) {
+            if (characteristic.uuid.toString() == MIO_MEASUREMENT_NEW_VM) {
+                System.err.println("MIO_DATA_NEW from service data=" + data[0])
+                intent.putExtra(MIO_DATA_NEW, data)
+                intent.putExtra(SENSORS_DATA_THREAD_FLAG, false)
+            }
+        }
+        sendBroadcast(intent)
+    }
+
+    // Implements callback methods for GATT events that the app cares about.  For example,
+    // connection change and services discovered.
+    private val mGattCallback: BluetoothGattCallback = object : BluetoothGattCallback() {
+        override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
+            val intentAction: String
+            System.err.println("my mGattCallback newState=$newState")
+            if (newState == BluetoothProfile.STATE_CONNECTED) {
+                intentAction = ACTION_GATT_CONNECTED
+                mConnectionState = STATE_CONNECTED
+                broadcastUpdate(intentAction)
+            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                intentAction = ACTION_GATT_DISCONNECTED
+                mConnectionState = STATE_DISCONNECTED
+                broadcastUpdate(intentAction)
+            }
+        }
+
+        @SuppressLint("MissingPermission")
+        override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                broadcastUpdate(ACTION_GATT_SERVICES_DISCOVERED)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    System.err.println("установили доп параметры соединения")
+                    mBluetoothGatt!!.setPreferredPhy(
+                        BluetoothDevice.PHY_LE_2M_MASK,
+                        BluetoothDevice.PHY_LE_2M_MASK,
+                        BluetoothDevice.PHY_OPTION_NO_PREFERRED
+                    )
+                }
+            } else { }
+        }
+
+        override fun onCharacteristicRead(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            status: Int
+        ) {
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                broadcastUpdate(characteristic, READ)
+            }
+        }
+
+        override fun onCharacteristicWrite(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            status: Int
+        ) {
+            super.onCharacteristicWrite(gatt, characteristic, status)
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                broadcastUpdate(characteristic, WRITE)
+            } else if (status == BluetoothGatt.GATT_FAILURE) {
+                System.err.println("запись не удалась")
+            }
+        }
+
+        @Deprecated("Deprecated in Java")
+        override fun onCharacteristicChanged(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic
+        ) {
+            broadcastUpdate(characteristic, NOTIFY)
+        }
+    }
+
+    private fun broadcastUpdate(action: String) {
+        val intent = Intent(action)
+        sendBroadcast(intent)
+    }
+
+    /**
+     * Initializes a reference to the local Bluetooth adapter.
+     *
+     * @return Return true if the initialization is successful.
+     */
+    fun initialize(): Boolean {
+        // For API level 18 and above, get a reference to BluetoothAdapter through
+        // BluetoothManager.
+        if (mBluetoothManager == null) {
+            mBluetoothManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
+            if (mBluetoothManager == null) {
+                return false
+            }
+        }
+        mBluetoothAdapter = mBluetoothManager!!.adapter
+        if (mBluetoothAdapter == null) {
+            return false
+        }
+        return true
+    }
+
+    /**
+     * Connects to the GATT server hosted on the Bluetooth LE device.
+     *
+     * @param address The device address of the destination device.
+     *
+     * @return Return true if the connection is initiated successfully. The connection result
+     * is reported asynchronously through the
+     * `BluetoothGattCallback#onConnectionStateChange(android.bluetooth.BluetoothGatt, int, int)`
+     * callback.
+     */
+    @SuppressLint("MissingPermission")
+    fun connect(address: String?): Boolean {
+        if (mBluetoothAdapter == null || address == null) {
+            return false
+        }
+
+        // Previously connected device.  Try to reconnect.
+        System.err.println("my connect address=$address")
+        if ( mBluetoothGatt != null) {//(address == mBluetoothDeviceAddress &&
+            return if (mBluetoothGatt!!.connect()) {
+                System.err.println("my connect true")
+                mConnectionState = STATE_CONNECTING
+                true
+            } else {
+                System.err.println("my connect false mBluetoothGatt=null")
+                false
+            }
+        }
+
+        val device = mBluetoothAdapter!!.getRemoteDevice(address) ?: return false
+        mBluetoothGatt = device.connectGatt(this, false, mGattCallback)
+        mBluetoothDeviceAddress = address
+        mConnectionState = STATE_CONNECTING
+        return true
+    }
+
+    /**
+     * Disconnects an existing connection or cancel a pending connection. The disconnection result
+     * is reported asynchronously through the
+     * `BluetoothGattCallback#onConnectionStateChange(android.bluetooth.BluetoothGatt, int, int)`
+     * callback.
+     */
+    @SuppressLint("MissingPermission")
+    fun disconnect() {
+        if (mBluetoothAdapter == null || mBluetoothGatt == null) {
+            return
+        }
+        mBluetoothGatt!!.disconnect()
+    }
+
+    /**
+     * After using a given BLE device, the app must call this method to ensure resources are
+     * released properly.
+     */
+    @SuppressLint("MissingPermission")
+    fun close() {
+        if (mBluetoothGatt == null) {
+            return
+        }
+        mBluetoothGatt!!.close()
+        mBluetoothGatt = null
+    }
+
+    /**
+     * Request a read on a given `BluetoothGattCharacteristic`. The read result is reported
+     * asynchronously through the `BluetoothGattCallback#onCharacteristicRead(android.bluetooth.BluetoothGatt, android.bluetooth.BluetoothGattCharacteristic, int)`
+     * callback.
+     *
+     * @param characteristic The characteristic to read from.
+     */
+    @SuppressLint("MissingPermission")
+    fun readCharacteristic(characteristic: BluetoothGattCharacteristic?) {
+        if (mBluetoothAdapter == null || mBluetoothGatt == null) {
+            return
+        }
+        mBluetoothGatt!!.readCharacteristic(characteristic)
+    }
+
+    /**
+     * Request a write `BluetoothGattCharacteristic`. The read result is reported
+     * asynchronously through the `BluetoothGattCallback#onCharacteristicRead(android.bluetooth.BluetoothGatt, android.bluetooth.BluetoothGattCharacteristic, int)`
+     * callback.
+     *
+     * @param characteristic The characteristic a write.
+     */
+    @SuppressLint("MissingPermission")
+    fun writeCharacteristic(characteristic: BluetoothGattCharacteristic?) {
+        if (mBluetoothAdapter == null || mBluetoothGatt == null) {
+            return
+        }
+        mBluetoothGatt!!.writeCharacteristic(characteristic)
+    }
+
+    /**
+     * Enables or disables notification on a give characteristic.
+     *
+     * @param characteristic Characteristic to act on.
+     * @param enabled If true, enable notification.  False otherwise.
+     */
+    @SuppressLint("MissingPermission")
+    fun setCharacteristicNotification(
+        characteristic: BluetoothGattCharacteristic,
+        enabled: Boolean
+    ) {
+        if (mBluetoothAdapter == null || mBluetoothGatt == null) {
+
+            return
+        }
+        mBluetoothGatt!!.setCharacteristicNotification(characteristic, enabled)
+        val descriptor = characteristic.getDescriptor(
+            UUID.fromString(SampleGattAttributes.CLIENT_CHARACTERISTIC_CONFIG)
+        )
+        descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+        mBluetoothGatt!!.writeDescriptor(descriptor)
+    }
+
+    /**
+     * Retrieves a list of supported GATT services on the connected device. This should be
+     * invoked only after `BluetoothGatt#discoverServices()` completes successfully.
+     *
+     * @return A `List` of supported services.
+     */
+    fun getSupportedGattServices(): List<BluetoothGattService?>? {
+        return if (mBluetoothGatt == null) null else mBluetoothGatt!!.services
+    }
 }
 
 /** Tag for the logs. */

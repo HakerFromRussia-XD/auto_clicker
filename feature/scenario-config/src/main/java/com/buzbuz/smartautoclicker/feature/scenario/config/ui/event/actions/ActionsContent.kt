@@ -131,9 +131,11 @@ class ActionsContent(appContext: Context) : NavBarDialogContent(appContext) {
                 choices = viewModel.actionCreationItems.value,
                 onChoiceSelectedListener = { choiceClicked ->
                     if (!choiceClicked.enabled) {
+                        System.err.println("choiceClicked = ${choiceClicked.title}  ${choiceClicked.description}")
                         actionTypeSelectionDialog?.show()
                         viewModel.onProModeUnsubscribedActionClicked(context, choiceClicked)
                     } else {
+                        System.err.println("else choiceClicked = ${choiceClicked.title}  ${choiceClicked.description}")
                         actionTypeSelectionDialog = null
                         showActionConfigDialog(viewModel.createAction(context, choiceClicked))
                     }

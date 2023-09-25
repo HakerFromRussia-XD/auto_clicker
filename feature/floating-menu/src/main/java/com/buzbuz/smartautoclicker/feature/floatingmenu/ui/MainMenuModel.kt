@@ -99,6 +99,7 @@ class MainMenuModel(application: Application) : AndroidViewModel(application) {
         )
 
     /** Tells if the scenario can be started. Edited scenario must be synchronized and engine should allow it. */
+    /** Определяет, можно ли запускать сценарий. Отредактированный сценарий должен быть синхронизирован, и движок должен это разрешить. */
     val canStartScenario: Flow<Boolean> = detectionRepository.canStartDetection
         .combine(editionRepository.isEditionSynchronized) { canStartDetection, isSynchronized ->
             canStartDetection && isSynchronized
@@ -109,8 +110,13 @@ class MainMenuModel(application: Application) : AndroidViewModel(application) {
         autoStopJob?.cancel()
         autoStopJob = null
 
+        System.err.println("my detectionState = ${detectionState.value}")
+//        System.err.println("my Detecting = ${UiState.Detecting}")
+//        System.err.println("my Idle = ${UiState.Idle}")
         when (detectionState.value) {
+            //вызывается в момент остановки сценария
             UiState.Detecting -> detectionRepository.stopDetection()
+            //вызывается в момент запуска сценария
             UiState.Idle -> startDetection(context, onStoppedByLimitation)
         }
     }

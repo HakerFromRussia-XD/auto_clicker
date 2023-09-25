@@ -54,6 +54,8 @@ internal class ActionExecutor(
 
     private val random = Random(System.currentTimeMillis())
 
+//    private val scenarioTransmit: ScenarioTransmit = IScenarioTransmit.getScenarioTransmit()
+
     /**
      * Execute the provided actions.
      * @param actions the actions to be executed.
@@ -124,11 +126,14 @@ internal class ActionExecutor(
 
         swipePath.moveTo(swipe.fromX!!, swipe.fromY!!, randomize)
         swipePath.lineTo(swipe.toX!!, swipe.toY!!, randomize)
+        //противоположное по вертикали направление свайпа
+//        swipePath.moveTo(swipe.fromX!!, swipe.toY!!, randomize)
+//        swipePath.lineTo(swipe.toX!!, swipe.fromY!!, randomize)
         swipeBuilder.addStroke(
             GestureDescription.StrokeDescription(
                 swipePath,
                 0,
-                if (randomize) random.getRandomizedGestureDuration(swipe.swipeDuration!!) else swipe.swipeDuration!!,
+                if (randomize) random.getRandomizedGestureDuration(swipe.swipeDuration!!) else swipe.swipeDuration!!
             )
         )
 
