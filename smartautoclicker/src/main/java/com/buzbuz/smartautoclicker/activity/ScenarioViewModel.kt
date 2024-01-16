@@ -245,7 +245,7 @@ class ScenarioViewModel(application: Application) : AndroidViewModel(application
      *
      * @return true if they are all granted, false if at least one is not.
      */
-    fun arePermissionsGranted(): Boolean = isOverlayPermissionValid() && isAccessibilityPermissionValid()
+    fun arePermissionsGranted(): Boolean = isOverlayPermissionValid() && isAccessibilityPermissionValid()//моё исправление isAccessibilityPermissionValid()
 
     /** Tells if the optional notification permission is granted or not. */
     fun isNotificationPermissionGranted(): Boolean = notificationManager?.areNotificationsEnabled() ?: true

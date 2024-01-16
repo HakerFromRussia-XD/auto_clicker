@@ -16,26 +16,37 @@
  */
 package com.buzbuz.smartautoclicker.activity
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.annotation.TargetApi
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothGatt
+import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothGattService
+import android.bluetooth.BluetoothManager
 import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.ServiceConnection
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.os.IBinder
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import com.buzbuz.smartautoclicker.R
-import com.buzbuz.smartautoclicker.SmartAutoClickerService
+import com.buzbuz.smartautoclicker.my.BluetoothLeService
 import com.buzbuz.smartautoclicker.my.IScenarioTransmit
+import com.buzbuz.smartautoclicker.my.SampleGattAttributes.MIO_MEASUREMENT_NEW_VM
+import com.buzbuz.smartautoclicker.my.SampleGattAttributes.REQUEST_ENABLE_BT
+import com.buzbuz.smartautoclicker.my.SampleGattAttributes.lookup
 import com.buzbuz.smartautoclicker.my.ScenarioTransmit
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.launch
 
 /**
  * Entry point activity for the application.
@@ -43,6 +54,61 @@ import kotlinx.coroutines.launch
  * available scenarios, if any.
  */
 class ScenarioActivity : AppCompatActivity() {
+
+    /// BLE
+    private var mDeviceAddress = "C1:54:5A:AF:4C:CB"//mac-подключаемого устройства
+
+    private val STATE_DISCONNECTED = 0
+    private val STATE_CONNECTING = 1
+    private val STATE_CONNECTED = 2
+
+    private var mScanning = false
+    private var mConnected = false
+    private var mBluetoothAdapter: BluetoothAdapter? = null
+    private var mBluetoothGatt: BluetoothGatt? = null
+    private var mBluetoothLeService: BluetoothLeService? = null
+    private var mConnectionState = this.STATE_DISCONNECTED
+    private var mGattCharacteristics = ArrayList<ArrayList<BluetoothGattCharacteristic>>()
+    // Code to manage Service lifecycle.
+    private val mServiceConnection: ServiceConnection = object : ServiceConnection {
+        override fun onServiceConnected(componentName: ComponentName, service: IBinder) {
+            System.err.println("Check ServiceConnection onServiceConnected()")
+            mBluetoothLeService = (service as BluetoothLeService.LocalBinder).service
+            if (!mBluetoothLeService?.initialize()!!) {
+                finish()
+            }
+
+            mBluetoothLeService?.connect(mDeviceAddress)
+        }
+
+        override fun onServiceDisconnected(componentName: ComponentName) {
+            System.err.println("Check ServiceConnection onServiceDisconnected()")
+            mBluetoothLeService = null
+        }
+    }
+    private val mGattUpdateReceiver: BroadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val action = intent.action
+            when {
+                BluetoothLeService.ACTION_GATT_CONNECTED == action -> {}
+                BluetoothLeService.ACTION_GATT_DISCONNECTED == action -> {
+                    mConnected = false
+                }
+                BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED == action -> {
+                    mConnected = true
+                    if (mBluetoothLeService != null) {
+                        displayGattServices(mBluetoothLeService!!.supportedGattServices)
+                    }
+                }
+                BluetoothLeService.ACTION_DATA_AVAILABLE == action -> {
+
+                    if (intent.getByteArrayExtra(BluetoothLeService.MIO_DATA_NEW) != null) displayData(
+                        intent.getByteArrayExtra(BluetoothLeService.MIO_DATA_NEW)
+                    )
+                }
+            }
+        }
+    }
 
     /** ViewModel providing the click scenarios data to the UI. */
     private val scenarioViewModel: ScenarioViewModel by viewModels()
@@ -59,43 +125,223 @@ class ScenarioActivity : AppCompatActivity() {
 
         scenarioViewModel.stopScenario()
 
-        CoroutineScope(Dispatchers.Main).launch {
-            testFun()
-        }
-
+        //мой код
+        val bluetoothManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
+        mBluetoothAdapter = bluetoothManager.adapter
+        val gattServiceIntent = Intent(this, BluetoothLeService::class.java)
+        bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE)
         registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter())
+
+
+        scanLeDevice(true)
+        System.err.println("my ScenarioActivity onCreate")
     }
-    private suspend fun testFun() {
-        val flow = flowOf(1, 2).onEach { delay(1000) }
-        val flow2 = flowOf("a", "b", "c").onEach { delay(1500) }
-        flow.combine(flow2) { flow1_data, flow2_data -> "$flow1_data $flow2_data" }.collect {
-            println("my first coroutine $it")
+    override fun onResume() {
+        super.onResume()
+        // Ensures Bluetooth is enabled on the device.  If Bluetooth is not currently enabled,
+        // fire an intent to display a dialog asking the user to grant permission to enable it.
+        if (!mBluetoothAdapter!!.isEnabled) {
+            val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+            if (ActivityCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.BLUETOOTH_CONNECT
+                ) != PackageManager.PERMISSION_GRANTED
+            ) { return } else {
+                startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT)
+            }
         }
+
+        if (mBluetoothLeService != null) {}
+    }
+    override fun onDestroy() {
+        super.onDestroy()
+        if (mBluetoothLeService != null) {
+            unbindService(mServiceConnection)
+            mBluetoothLeService = null
+            unregisterReceiver(mGattUpdateReceiver)
+        }
+        if (mScanning) {
+            if (ActivityCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.BLUETOOTH_SCAN
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                Toast.makeText(this,"Permissions not granted", Toast.LENGTH_SHORT).show()
+                return
+            }
+            mBluetoothAdapter!!.stopLeScan(mLeScanCallback) }
     }
 
 
-    private val mGattUpdateReceiver: BroadcastReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            when (intent.action) {
-                SmartAutoClickerService.ACTION_GATT_CONNECTED -> {}
-                SmartAutoClickerService.ACTION_GATT_DISCONNECTED -> {Toast.makeText(context, "ACTION_GATT_DISCONNECTED", Toast.LENGTH_SHORT).show()}
-                SmartAutoClickerService.ACTION_GATT_SERVICES_DISCOVERED -> {
-                    Toast.makeText(context, "ACTION_GATT_SERVICES_DISCOVERED", Toast.LENGTH_SHORT).show()
-                }
-                SmartAutoClickerService.ACTION_DATA_AVAILABLE -> {
-                    if(intent.getByteArrayExtra(SmartAutoClickerService.MIO_DATA_NEW) != null) displayDataNew(intent.getByteArrayExtra(SmartAutoClickerService.MIO_DATA_NEW))
-                }
+    @SuppressLint("MissingPermission")
+    private fun scanLeDevice(enable: Boolean) {
+        if (mBluetoothAdapter != null) {
+            if (enable) {
+                System.err.println("my scanLeDevice mBluetoothAdapter != null")
+                mScanning = true
+                mBluetoothAdapter!!.startLeScan(mLeScanCallback)
+            } else {
+                System.err.println("my scanLeDevice mBluetoothAdapter  null")
+                mScanning = false
+                mBluetoothAdapter!!.stopLeScan(mLeScanCallback)
             }
         }
     }
-    private fun displayDataNew(data: ByteArray?) {
-        if (data != null) {
 
+
+    @SuppressLint("NewApi", "MissingPermission")
+    @TargetApi(Build.VERSION_CODES.M)
+    private val mLeScanCallback =
+        BluetoothAdapter.LeScanCallback { device: BluetoothDevice, rssi: Int, scanRecord: ByteArray? ->
+            runOnUiThread {
+                if (ActivityCompat.checkSelfPermission(
+                        this,
+                        Manifest.permission.BLUETOOTH_CONNECT
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+
+                    return@runOnUiThread
+                }
+                if (device.name != null) {
+                    if (device.address == mDeviceAddress) {
+                        mDeviceAddress = device.toString()
+                        scanLeDevice(false)
+                        reconnect()
+                    }
+                }
+            }
+        }
+
+    fun disconnect () {
+        System.err.println("Check disconnect()")
+        if (mBluetoothLeService != null) {
+            mBluetoothLeService!!.disconnect()
+            unbindService(mServiceConnection)
+            mBluetoothLeService = null
+        }
+        mConnected = false
+    }
+    private fun reconnect () {
+        //полное завершение сеанса связи и создание нового в onResume
+        System.err.println("Check reconnect()")
+        if (mBluetoothLeService != null) {
+            unbindService(mServiceConnection)
+            mBluetoothLeService = null
+        }
+
+        val gattServiceIntent = Intent(this, BluetoothLeService::class.java)
+        bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE)
+
+        //BLE
+        registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter())
+        if (mBluetoothLeService != null) {
+            mBluetoothLeService!!.connect(mDeviceAddress)
+        }
+    }
+
+
+    // Demonstrates how to iterate through the supported GATT Services/Characteristics.
+    // In this sample, we populate the data structure that is bound to the ExpandableListView
+    // on the UI.
+    private fun displayGattServices(gattServices: List<BluetoothGattService>?) {
+        System.err.println("my ------->   момент начала выстраивания списка параметров")
+        if (gattServices == null) return
+        var uuid: String?
+        val unknownServiceString = ("unknown_service")
+        val unknownCharaString =("unknown_characteristic")
+        val gattServiceData = ArrayList<HashMap<String, String?>>()
+        val gattCharacteristicData = ArrayList<ArrayList<HashMap<String, String?>>>()
+        mGattCharacteristics = ArrayList()
+
+
+        // Loops through available GATT Services.
+        for (gattService in gattServices) {
+            val currentServiceData = HashMap<String, String?>()
+            uuid = gattService.uuid.toString()
+            currentServiceData["NAME"] = lookup(uuid, unknownServiceString)
+            currentServiceData["UUID"] = uuid
+            gattServiceData.add(currentServiceData)
+            val gattCharacteristicGroupData = ArrayList<HashMap<String, String?>>()
+            val gattCharacteristics = gattService.characteristics
+            val charas = ArrayList<BluetoothGattCharacteristic>()
+
+            // Loops through available Characteristics.
+            for (gattCharacteristic in gattCharacteristics) {
+                charas.add(gattCharacteristic)
+                val currentCharaData = HashMap<String, String?>()
+                uuid = gattCharacteristic.uuid.toString()
+                currentCharaData["NAME"] = lookup(uuid, unknownCharaString)
+                currentCharaData["UUID"] = uuid
+                gattCharacteristicGroupData.add(currentCharaData)
+                System.err.println("my ------->   ХАРАКТЕРИСТИКА: $uuid")
+            }
+            mGattCharacteristics.add(charas)
+            gattCharacteristicData.add(gattCharacteristicGroupData)
+        }
+    }
+    private fun bleCommand(uuid: String): Boolean {
+        if (mBluetoothLeService != null) {
+            for (i in mGattCharacteristics.indices) {
+                for (j in mGattCharacteristics[i].indices) {
+                    System.err.println("my найденные характеристики ===============")
+                    System.err.println("my найденные характеристики " + i + " " + j + " :" + mGattCharacteristics[i][j].uuid.toString() + "    искомая: " + uuid)
+                    if (mGattCharacteristics[i][j].uuid.toString() == uuid) {
+                        val mCharacteristic = mGattCharacteristics[i][j]
+                        if (mBluetoothAdapter == null || mBluetoothGatt == null) {
+                            return false
+                        }
+                        if (ActivityCompat.checkSelfPermission(
+                                this,
+                                Manifest.permission.BLUETOOTH_CONNECT
+                            ) != PackageManager.PERMISSION_GRANTED
+                        ) {
+                            Toast.makeText(this, "Permissions not granted", Toast.LENGTH_SHORT)
+                                .show()
+                            return false
+                        } else {
+//                        Toast.makeText(this,"Permissions granted", Toast.LENGTH_SHORT).show()
+                        }
+
+                        mBluetoothLeService!!.setCharacteristicNotification(
+                            mCharacteristic, true)
+                    }
+                }
+            }
+        }
+        return true
+    }
+    private fun startSubscribeSensorsDataThread() {
+        System.err.println("my startSubscribeSensorsDataThread 1 вход в функцию")
+        val subscribeThread = Thread {
+            System.err.println("my startSubscribeSensorsDataThread 2 запуск потока")
+            var count = 100
+            var subscribeThreadFlag = true
+            while (subscribeThreadFlag) {
+                System.err.println("my startSubscribeSensorsDataThread 2 запуск бесконечного цикла")
+                count -= 1
+                if (count < 0) { subscribeThreadFlag = false }
+
+
+                runOnUiThread {
+                    bleCommand(MIO_MEASUREMENT_NEW_VM)
+                    System.err.println("my startSubscribeSensorsDataThread попытка подписки")
+                }
+                try {
+                    Thread.sleep(500)
+                } catch (ignored: Exception) { }
+            }
+        }
+        subscribeThread.start()
+    }
+
+    private fun displayData(data: ByteArray?) {
+        if (data != null) {
             val dataSens1 = castUnsignedCharToInt(data[0])
             val dataSens2 = castUnsignedCharToInt(data[1])
             val sensorLevel = 100
             val rightSlide: Boolean = dataSens1 > sensorLevel
             val leftSlide: Boolean = dataSens2 > sensorLevel
+
 
             //если решение лететь налево
             if (rightSlide && leftSlide && previousState === previousStates.LEFT_SLIDE || !rightSlide && leftSlide){
@@ -115,14 +361,10 @@ class ScenarioActivity : AppCompatActivity() {
             }
 
             System.err.println("my $previousState")
-            //TODO отправлять результат
 
+
+            //TODO отправлять результат
             /** Tells if the limitation in scenario count have been reached. */
-//            isActionHappens = if (previousState == previousStates.STOP_SLIDE) {
-//                flowOf(false)
-//            } else {
-//                flowOf(true)
-//            }
             scenarioTransmit.isInversionOn = if (previousState == previousStates.LEFT_SLIDE) {
                 flowOf(true)
             } else {
@@ -130,20 +372,15 @@ class ScenarioActivity : AppCompatActivity() {
             }
         }
     }
-//    override var isActionHappens: Flow<Boolean> = flowOf(true)
-
-
 
     private fun makeGattUpdateIntentFilter(): IntentFilter {
         val intentFilter = IntentFilter()
-        intentFilter.addAction(SmartAutoClickerService.ACTION_GATT_CONNECTED)
-        intentFilter.addAction(SmartAutoClickerService.ACTION_GATT_DISCONNECTED)
-        intentFilter.addAction(SmartAutoClickerService.ACTION_GATT_SERVICES_DISCOVERED)
-        intentFilter.addAction(SmartAutoClickerService.ACTION_DATA_AVAILABLE)
+        intentFilter.addAction(BluetoothLeService.ACTION_GATT_CONNECTED)
+        intentFilter.addAction(BluetoothLeService.ACTION_GATT_DISCONNECTED)
+        intentFilter.addAction(BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED)
+        intentFilter.addAction(BluetoothLeService.ACTION_DATA_AVAILABLE)
         return intentFilter
     }
-
-
     private fun castUnsignedCharToInt(Ubyte: Byte): Int {
         var cast = Ubyte.toInt()
         if (cast < 0) {

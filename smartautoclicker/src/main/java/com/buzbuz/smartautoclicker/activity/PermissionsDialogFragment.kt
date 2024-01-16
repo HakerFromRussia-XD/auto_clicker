@@ -82,6 +82,7 @@ class PermissionsDialogFragment : DialogFragment() {
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         viewBinding = DialogPermissionsBinding.inflate(layoutInflater)
+        System.err.println("my onCreateDialog")
 
         notifPermLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             setConfigStateDrawable(viewBinding.imgConfigNotificationStatus, granted)
@@ -115,9 +116,10 @@ class PermissionsDialogFragment : DialogFragment() {
         super.onResume()
         setConfigStateDrawable(viewBinding.imgConfigOverlayStatus, scenarioViewModel.isOverlayPermissionValid())
         setConfigStateDrawable(viewBinding.imgConfigAccessibilityStatus, scenarioViewModel.isAccessibilityPermissionValid())
+//        setConfigStateDrawable(viewBinding.imgConfigAccessibilityStatus, true)
         setConfigStateDrawable(viewBinding.imgConfigNotificationStatus, scenarioViewModel.isNotificationPermissionGranted())
         (dialog as AlertDialog).getButton(AlertDialog.BUTTON_POSITIVE).isEnabled =
-            scenarioViewModel.isOverlayPermissionValid() && scenarioViewModel.isAccessibilityPermissionValid()
+            scenarioViewModel.isOverlayPermissionValid() && scenarioViewModel.isAccessibilityPermissionValid()//моё исправление scenarioViewModel.isAccessibilityPermissionValid()
     }
 
     /**

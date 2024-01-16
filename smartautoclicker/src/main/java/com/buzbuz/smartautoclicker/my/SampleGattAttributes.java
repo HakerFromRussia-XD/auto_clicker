@@ -7,6 +7,7 @@ import java.util.HashMap;
  */
 public class SampleGattAttributes {
     private static final HashMap<String, String> attributes = new HashMap<>();
+    public static int REQUEST_ENABLE_BT = 1;
     // Sample Characteristics.
     public static String MIO_MEASUREMENT = "00002a37-0000-1000-8000-00805f9b34fb";
     public static String SET_ADC_CURRENT_TRESHOLD_HDLE = "0000fe41-8e22-4541-9d4c-21edae82ed19";
