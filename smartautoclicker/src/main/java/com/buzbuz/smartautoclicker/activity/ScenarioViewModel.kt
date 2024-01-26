@@ -336,18 +336,17 @@ class ScenarioViewModel(application: Application) : AndroidViewModel(application
      * [android.app.Activity.onActivityResult]
      * @param scenario the identifier of the scenario of clicks to be used for detection.
      */
-    fun loadScenario(context: Context, resultCode: Int, data: Intent?, scenario: Scenario): Boolean {
+    fun loadScenario(context: Context, resultCode: Int, data: Intent, scenario: Scenario): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             val foregroundPermission = PermissionChecker.checkSelfPermission(context, Manifest.permission.FOREGROUND_SERVICE)
             if (foregroundPermission != PermissionChecker.PERMISSION_GRANTED) return false
         }
 
-        if (data != null) {
-            clickerService?.start(resultCode, data, scenario)
+
+        clickerService?.start(resultCode, data, scenario)
 
 //            val gattServiceIntent = context.Intent(this, BluetoothLeService::class.java)
 //            bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE)
-        }
         return true
     }
 
