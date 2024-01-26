@@ -18,12 +18,11 @@ package com.buzbuz.smartautoclicker
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
-import android.annotation.SuppressLint
-import android.app.*
-import android.bluetooth.BluetoothGatt
-import android.bluetooth.BluetoothGattCallback
-import android.bluetooth.BluetoothGattCharacteristic
-import android.bluetooth.BluetoothProfile
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.media.projection.MediaProjectionManager
@@ -42,9 +41,6 @@ import com.buzbuz.smartautoclicker.core.processing.data.AndroidExecutor
 import com.buzbuz.smartautoclicker.core.processing.domain.DetectionRepository
 import com.buzbuz.smartautoclicker.core.ui.overlays.manager.OverlayManager
 import com.buzbuz.smartautoclicker.feature.floatingmenu.ui.MainMenu
-import com.buzbuz.smartautoclicker.my.SampleGattAttributes.MIO_MEASUREMENT_NEW_VM
-import com.buzbuz.smartautoclicker.my.SampleGattAttributes.READ
-import com.buzbuz.smartautoclicker.my.SampleGattAttributes.WRITE
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -120,6 +116,7 @@ class SmartAutoClickerService : AccessibilityService(), AndroidExecutor {
     private var overlayManager: OverlayManager? = null
     /** True if the overlay is started, false if not. */
     private var isStarted: Boolean = false
+    private var informThread: Boolean = true
 
     /** Local interface providing an API for the [SmartAutoClickerService]. */
     inner class LocalService {
@@ -208,6 +205,16 @@ class SmartAutoClickerService : AccessibilityService(), AndroidExecutor {
         serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
         LOCAL_SERVICE_INSTANCE = LocalService()
         Log.d("my", "SmartAutoClickerService started")
+//        Log.d("my", "BluetoothLeService started")
+//        Thread {
+//            while (informThread) {
+//                Log.d("TAG", "SmartAutoClickerService Foreground Service is running...")
+//                try {
+//                    Thread.sleep(2000)
+//                } catch (ignored: InterruptedException) {
+//                }
+//            }
+//        }.start()
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
@@ -215,6 +222,8 @@ class SmartAutoClickerService : AccessibilityService(), AndroidExecutor {
         LOCAL_SERVICE_INSTANCE = null
         serviceScope?.cancel()
         serviceScope = null
+//        informThread = false
+        Log.d("my", "SmartAutoClickerService onUnbind")
         return super.onUnbind(intent)
     }
 

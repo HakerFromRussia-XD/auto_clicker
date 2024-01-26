@@ -82,7 +82,7 @@ class DetectionRepository private constructor(context: Context) {
     val canStartDetection: Flow<Boolean> = scenarioId
         .filterNotNull()
         .combine(detectionState) { id, state ->
-            System.err.println("my scenarioId = ${scenarioId.value}   detectionState = ${detectionState.first()}")
+//            System.err.println("my scenarioId = ${scenarioId.value}   detectionState = ${detectionState.first()}")
             if (state == DetectionState.INACTIVE)  return@combine false
 
             scenarioRepository.getEvents(id.databaseId).forEach {
@@ -114,11 +114,11 @@ class DetectionRepository private constructor(context: Context) {
         val events = scenarioRepository.getEvents(id)
         val endCondition = scenarioRepository.getEndConditions(id)
 
-        System.err.println("my ========")
-        events.forEach {
-            System.err.println("my startDetection  event = $it")
-        }
-        System.err.println("my ========")
+//        System.err.println("my ========")
+//        events.forEach {
+//            System.err.println("my startDetection  event = $it")
+//        }
+//        System.err.println("my ========")
 
         detectorEngine.value?.startDetection(
             context = context,

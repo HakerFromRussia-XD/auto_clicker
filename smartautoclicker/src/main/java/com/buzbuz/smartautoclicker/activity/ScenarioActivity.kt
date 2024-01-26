@@ -145,10 +145,11 @@ class ScenarioActivity : AppCompatActivity() {
 //        bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE)
 
         // foreground service
-//        val serviceIntent = Intent(
-//            this,
-//            BluetoothLeService::class.java
-//        )
+        val serviceIntent = Intent(
+            this,
+            BluetoothLeService::class.java
+        )
+        startService(serviceIntent)
 //        startForegroundService(serviceIntent)
 
 //        registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter())
@@ -157,7 +158,7 @@ class ScenarioActivity : AppCompatActivity() {
 
 //        askPermissions()
 //        scanLeDevice(true)
-        System.err.println("my ScenarioActivity onCreate")
+//        System.err.println("my ScenarioActivity onCreate")
     }
     override fun onResume() {
         super.onResume()

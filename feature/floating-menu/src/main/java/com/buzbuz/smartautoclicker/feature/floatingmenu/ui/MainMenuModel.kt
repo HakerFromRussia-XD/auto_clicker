@@ -110,7 +110,7 @@ class MainMenuModel(application: Application) : AndroidViewModel(application) {
         autoStopJob?.cancel()
         autoStopJob = null
 
-        System.err.println("my detectionState = ${detectionState.value}")
+//        System.err.println("my detectionState = ${detectionState.value}")
 //        System.err.println("my Detecting = ${UiState.Detecting}")
 //        System.err.println("my Idle = ${UiState.Idle}")
         when (detectionState.value) {

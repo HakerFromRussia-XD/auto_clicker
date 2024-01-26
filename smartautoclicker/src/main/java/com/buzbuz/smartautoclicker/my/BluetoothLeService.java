@@ -321,13 +321,13 @@ public class BluetoothLeService extends Service {
         return mBinder;
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        Log.d("my", "BluetoothLeService started");
         new Thread(
                 () -> {
                     while (true){
-                        Log.d("TAG", "Foreground Service is running...");
+                        Log.d("my", "BluetoothLeService Foreground Service is running...");
 
                         try {
                             Thread.sleep(2000);
@@ -338,13 +338,17 @@ public class BluetoothLeService extends Service {
                 }
         ).start();
 
-        final String CHANNEL_ID = "Foreground Service";
-        NotificationChannel channel = new NotificationChannel(CHANNEL_ID, CHANNEL_ID, NotificationManager.IMPORTANCE_LOW);
-        getSystemService(NotificationManager.class).createNotificationChannel(channel);
-        Notification.Builder notification = new Notification.Builder(this, CHANNEL_ID)
-                .setContentText("Foreground Service running")
-                .setContentTitle("This is TITLE");
-        startForeground(1001, notification.build());
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            final String CHANNEL_ID = "Foreground Service";
+            NotificationChannel channel;
+            channel = new NotificationChannel(CHANNEL_ID, CHANNEL_ID, NotificationManager.IMPORTANCE_LOW);
+            getSystemService(NotificationManager.class).createNotificationChannel(channel);
+            Notification.Builder notification = new Notification.Builder(this, CHANNEL_ID)
+                    .setContentText("Foreground Service running")
+                    .setContentTitle("This is TITLE");
+            startForeground(1001, notification.build());
+        }
 
 
         return super.onStartCommand(intent, flags, startId);
