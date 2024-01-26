@@ -21,7 +21,6 @@ import android.annotation.SuppressLint
 import android.annotation.TargetApi
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothManager
@@ -35,12 +34,10 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
-import android.webkit.PermissionRequest
-import android.widget.Toast
 import androidx.activity.viewModels
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import com.buzbuz.smartautoclicker.R
 import com.buzbuz.smartautoclicker.my.BluetoothLeService
 import com.buzbuz.smartautoclicker.my.IScenarioTransmit
@@ -62,7 +59,7 @@ import kotlinx.coroutines.flow.flowOf
 class ScenarioActivity : AppCompatActivity() {
 
     /// BLE
-    private var mDeviceAddress = "79:34:A6:8A:31:EB"//"C1:54:5A:AF:4C:CB"//mac-подключаемого устройства
+    private var mDeviceAddress = "45:4D:DA:63:8C:07"//"C1:54:5A:AF:4C:CB"//mac-подключаемого устройства
 
     private val STATE_DISCONNECTED = 0
     private val STATE_CONNECTING = 1
@@ -132,58 +129,70 @@ class ScenarioActivity : AppCompatActivity() {
     /** The repository for the pro mode billing. */
     private val scenarioTransmit: ScenarioTransmit = IScenarioTransmit.getScenarioTransmit()
 
+    @RequiresApi(Build.VERSION_CODES.O)
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_scenario)
-
         scenarioViewModel.stopScenario()
 
+
+
         //мой код
-        val bluetoothManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
-        mBluetoothAdapter = bluetoothManager.adapter
-        val gattServiceIntent = Intent(this, BluetoothLeService::class.java)
-        bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE)
-        registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter())
+//        val bluetoothManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
+//        mBluetoothAdapter = bluetoothManager.adapter
+//        val gattServiceIntent = Intent(this, BluetoothLeService::class.java)
+//        bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE)
+
+        // foreground service
+//        val serviceIntent = Intent(
+//            this,
+//            BluetoothLeService::class.java
+//        )
+//        startForegroundService(serviceIntent)
+
+//        registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter())
+
+
 
 //        askPermissions()
-        scanLeDevice(true)
+//        scanLeDevice(true)
         System.err.println("my ScenarioActivity onCreate")
     }
     override fun onResume() {
         super.onResume()
         // Ensures Bluetooth is enabled on the device.  If Bluetooth is not currently enabled,
         // fire an intent to display a dialog asking the user to grant permission to enable it.
-        if (!mBluetoothAdapter!!.isEnabled) {
-            val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-            if (ActivityCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.BLUETOOTH_CONNECT
-                ) != PackageManager.PERMISSION_GRANTED
-            ) { return } else {
-                startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT)
-            }
-        }
-
-        if (mBluetoothLeService != null) {}
+//        if (!mBluetoothAdapter!!.isEnabled) {
+//            val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+//            if (ActivityCompat.checkSelfPermission(
+//                    this,
+//                    Manifest.permission.BLUETOOTH_CONNECT
+//                ) != PackageManager.PERMISSION_GRANTED
+//            ) { return } else {
+//                startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT)
+//            }
+//        }
+//
+//        if (mBluetoothLeService != null) {}
     }
     override fun onDestroy() {
         super.onDestroy()
-        if (mBluetoothLeService != null) {
-            unbindService(mServiceConnection)
-            mBluetoothLeService = null
-            unregisterReceiver(mGattUpdateReceiver)
-        }
-        if (mScanning) {
-            if (ActivityCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.BLUETOOTH_SCAN
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                Toast.makeText(this,"Permissions not granted", Toast.LENGTH_SHORT).show()
-                return
-            }
-            mBluetoothAdapter!!.stopLeScan(mLeScanCallback) }
+//        if (mBluetoothLeService != null) {
+//            unbindService(mServiceConnection)
+//            mBluetoothLeService = null
+//            unregisterReceiver(mGattUpdateReceiver)
+//        }
+//        if (mScanning) {
+//            if (ActivityCompat.checkSelfPermission(
+//                    this,
+//                    Manifest.permission.BLUETOOTH_SCAN
+//                ) != PackageManager.PERMISSION_GRANTED
+//            ) {
+//                Toast.makeText(this,"Permissions not granted", Toast.LENGTH_SHORT).show()
+//                return
+//            }
+//            mBluetoothAdapter!!.stopLeScan(mLeScanCallback) }
     }
 
 
@@ -212,8 +221,9 @@ class ScenarioActivity : AppCompatActivity() {
             runOnUiThread {
                 if (device.name != null) {
                     System.err.println("my scanLeDevice Callback ${device.name} : ${device.address}")
-                    if (device.address == mDeviceAddress) {
-                        mDeviceAddress = device.toString()
+                    if (device.name.contains("FEST-X")) {
+                        mDeviceAddress = device.address
+//                        mDeviceAddress = device.toString()
                         scanLeDevice(false)
                         reconnect()
                     }
@@ -298,12 +308,12 @@ class ScenarioActivity : AppCompatActivity() {
                     if (mGattCharacteristics[i][j].uuid.toString() == uuid) {
 //                        System.err.println("my нужная характеристика найдена")
                         val mCharacteristic = mGattCharacteristics[i][j]
-                        if (mBluetoothAdapter == null ) {
-//                            System.err.println("my mBluetoothAdapter = null")
-                            return false
-                        } else {
-//                            System.err.println("my mBluetoothAdapter существуют")
-                        }
+//                        if (mBluetoothAdapter == null ) {
+////                            System.err.println("my mBluetoothAdapter = null")
+//                            return false
+//                        } else {
+////                            System.err.println("my mBluetoothAdapter существуют")
+//                        }
 
                         mBluetoothLeService!!.setCharacteristicNotification(
                             mCharacteristic, true)
@@ -375,8 +385,8 @@ class ScenarioActivity : AppCompatActivity() {
         intentFilter.addAction(BluetoothLeService.ACTION_DATA_AVAILABLE)
         return intentFilter
     }
-    private fun castUnsignedCharToInt(Ubyte: Byte): Int {
-        var cast = Ubyte.toInt()
+    private fun castUnsignedCharToInt(ubyte: Byte): Int {
+        var cast = ubyte.toInt()
         if (cast < 0) {
             cast += 256
         }

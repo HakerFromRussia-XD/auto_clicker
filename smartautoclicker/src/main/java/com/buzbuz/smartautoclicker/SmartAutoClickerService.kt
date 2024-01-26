@@ -207,6 +207,7 @@ class SmartAutoClickerService : AccessibilityService(), AndroidExecutor {
         super.onServiceConnected()
         serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
         LOCAL_SERVICE_INSTANCE = LocalService()
+        Log.d("my", "SmartAutoClickerService started")
     }
 
     override fun onUnbind(intent: Intent?): Boolean {

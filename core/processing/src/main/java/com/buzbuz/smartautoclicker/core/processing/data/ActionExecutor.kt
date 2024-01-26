@@ -34,6 +34,8 @@ import com.buzbuz.smartautoclicker.core.processing.data.processor.ProcessingResu
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.withContext
 import kotlin.math.max
 import kotlin.math.min
@@ -55,6 +57,11 @@ internal class ActionExecutor(
     private val random = Random(System.currentTimeMillis())
 
 //    private val scenarioTransmit: ScenarioTransmit = IScenarioTransmit.getScenarioTransmit()
+//    private val test = IScenarioTransmit.getScenarioTransmit()
+//    private val scenarioTransmit: Flow<Boolean> = IScenarioTransmit.canStartDetection
+//        .combine(editionRepository.isEditionSynchronized) { canStartDetection, isSynchronized ->
+//            canStartDetection && isSynchronized
+//        }
 
     /**
      * Execute the provided actions.
@@ -124,11 +131,13 @@ internal class ActionExecutor(
         val swipePath = Path()
         val swipeBuilder = GestureDescription.Builder()
 
+
         swipePath.moveTo(swipe.fromX!!, swipe.fromY!!, randomize)
         swipePath.lineTo(swipe.toX!!, swipe.toY!!, randomize)
         //противоположное по вертикали направление свайпа
-//        swipePath.moveTo(swipe.fromX!!, swipe.toY!!, randomize)
-//        swipePath.lineTo(swipe.toX!!, swipe.fromY!!, randomize)
+//        swipePath.moveTo(swipe.toX!!, swipe.toY!!, randomize)
+//        swipePath.lineTo(swipe.fromX!!, swipe.fromY!!, randomize)
+
         swipeBuilder.addStroke(
             GestureDescription.StrokeDescription(
                 swipePath,
@@ -137,9 +146,10 @@ internal class ActionExecutor(
             )
         )
 
-        withContext(Dispatchers.Main) {
-            androidExecutor.executeGesture(swipeBuilder.build())
-        }
+        //TODO отключили свайп
+//        withContext(Dispatchers.Main) {
+//            androidExecutor.executeGesture(swipeBuilder.build())
+//        }
     }
 
     /**

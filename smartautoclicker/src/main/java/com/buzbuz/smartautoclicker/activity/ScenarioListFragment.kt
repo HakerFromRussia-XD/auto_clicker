@@ -267,8 +267,9 @@ class ScenarioListFragment : Fragment(), PermissionsDialogFragment.PermissionDia
 
         showMediaProjectionWarning()
         //
-//        val started = scenarioViewModel.loadScenario(requireContext(), 1, null, scenario)
-//        if (started) activity?.finish()
+        val started = scenarioViewModel.loadScenario(requireContext(), 1, null, scenario)
+
+        if (started) activity?.finish()
 //        else Toast.makeText(requireContext(), R.string.toast_denied_foreground_permission, Toast.LENGTH_SHORT).show()
     }
 
@@ -279,7 +280,7 @@ class ScenarioListFragment : Fragment(), PermissionsDialogFragment.PermissionDia
             // specifying the dialog to start to request the permission is invalid on some devices (Chinese Honor6X Android 10).
             // There is nothing to do in those cases, the app can't be used.
             try {
-                projectionActivityResult.launch(projectionManager.createScreenCaptureIntent())
+//                projectionActivityResult.launch(projectionManager.createScreenCaptureIntent())
             } catch (npe: NullPointerException) {
                 showUnsupportedDeviceDialog()
             }

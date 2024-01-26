@@ -53,6 +53,9 @@ import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.TELEMETRY_NUMB
 import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.WRITE;
 
 import android.annotation.SuppressLint;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -68,6 +71,12 @@ import android.content.Intent;
 import android.os.Binder;
 import android.os.Build;
 import android.os.IBinder;
+import android.util.Log;
+
+import androidx.annotation.RequiresApi;
+import androidx.core.app.NotificationCompat;
+
+import com.buzbuz.smartautoclicker.R;
 
 import java.util.List;
 import java.util.UUID;
@@ -75,6 +84,7 @@ import java.util.UUID;
 @SuppressLint("MissingPermission")
 public class BluetoothLeService extends Service {
     private final static String TAG = BluetoothLeService.class.getSimpleName();
+    private Context context;
 
     private BluetoothManager mBluetoothManager;
     private BluetoothAdapter mBluetoothAdapter;
@@ -113,6 +123,7 @@ public class BluetoothLeService extends Service {
 
     private void broadcastUpdate(final BluetoothGattCharacteristic characteristic, final String state) {
         final Intent intent = new Intent(BluetoothLeService.ACTION_DATA_AVAILABLE);
+        System.err.println("my BluetoothLeService broadcastUpdate");
 
         final byte[] data = characteristic.getValue();
 
@@ -256,7 +267,7 @@ public class BluetoothLeService extends Service {
 
         @Override
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
-//            System.err.println("my вошли в onServicesDiscovered status = "+status);
+            System.err.println("my вошли в onServicesDiscovered status = "+status);
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 broadcastUpdate(ACTION_GATT_SERVICES_DISCOVERED);
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -306,7 +317,45 @@ public class BluetoothLeService extends Service {
 
     @Override
     public IBinder onBind(Intent intent) {
+        System.err.println("my start BluetoothLeService");
         return mBinder;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        new Thread(
+                () -> {
+                    while (true){
+                        Log.d("TAG", "Foreground Service is running...");
+
+                        try {
+                            Thread.sleep(2000);
+                        } catch (InterruptedException ignored) {
+
+                        }
+                    }
+                }
+        ).start();
+
+        final String CHANNEL_ID = "Foreground Service";
+        NotificationChannel channel = new NotificationChannel(CHANNEL_ID, CHANNEL_ID, NotificationManager.IMPORTANCE_LOW);
+        getSystemService(NotificationManager.class).createNotificationChannel(channel);
+        Notification.Builder notification = new Notification.Builder(this, CHANNEL_ID)
+                .setContentText("Foreground Service running")
+                .setContentTitle("This is TITLE");
+        startForeground(1001, notification.build());
+
+
+        return super.onStartCommand(intent, flags, startId);
+    }
+
+    private void start() {
+        Notification notification = new Notification();
+        notification.iconLevel = R.drawable.ic_load;
+//        NotificationCompat.Builder(this,"running_channel");
+//        notification.setSmallIcon(R.drawable.ic_l)
+        startForeground(1, notification);
     }
 
     @Override
