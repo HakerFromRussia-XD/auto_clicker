@@ -34,6 +34,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
+import android.view.View
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
@@ -65,6 +66,8 @@ class ScenarioActivity : AppCompatActivity() {
     private val STATE_CONNECTING = 1
     private val STATE_CONNECTED = 2
 
+    private var mConnectView: View? = null
+    private var mDisconnectView: View? = null
     private var mScanning = false
     private var mConnected = false
     private var subscribeThreadFlag = true
@@ -99,11 +102,15 @@ class ScenarioActivity : AppCompatActivity() {
                 BluetoothLeService.ACTION_GATT_DISCONNECTED == action -> {
                     System.err.println("my ACTION_GATT_DISCONNECTED")
                     mConnected = false
+//                    mConnectView!!.visibility = View.GONE
+//                    mDisconnectView!!.visibility = View.VISIBLE
                     reconnect()
                 }
                 BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED == action -> {
                     System.err.println("my ACTION_GATT_SERVICES_DISCOVERED")
                     mConnected = true
+//                    mConnectView!!.visibility = View.VISIBLE
+//                    mDisconnectView!!.visibility = View.GONE
                     if (mBluetoothLeService != null) {
                         displayGattServices(mBluetoothLeService!!.supportedGattServices)
                         startSubscribeSensorsDataThread()
@@ -136,28 +143,33 @@ class ScenarioActivity : AppCompatActivity() {
         setContentView(R.layout.activity_scenario)
         scenarioViewModel.stopScenario()
 
+//        mConnectView = findViewById(R.id.connect_view)
+//        mDisconnectView = findViewById(R.id.disconnect_view)
+//        mConnectView!!.visibility = View.GONE
+//        mDisconnectView!!.visibility = View.VISIBLE
+
 
 
         //мой код
-//        val bluetoothManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
-//        mBluetoothAdapter = bluetoothManager.adapter
+        val bluetoothManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
+        mBluetoothAdapter = bluetoothManager.adapter
 //        val gattServiceIntent = Intent(this, BluetoothLeService::class.java)
 //        bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE)
 
         // foreground service
-//        val serviceIntent = Intent(this, BluetoothLeService::class.java)
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-//            startForegroundService(serviceIntent)
-//        } else {
-//            startService(serviceIntent)
-//        }
+        val serviceIntent = Intent(this, BluetoothLeService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent)
+        } else {
+            startService(serviceIntent)
+        }
 
-//        registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter())
+        registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter())
 
 
 
-//        askPermissions()
-//        scanLeDevice(true)
+        askPermissions()
+        scanLeDevice(true)
 //        System.err.println("my ScenarioActivity onCreate")
     }
     override fun onResume() {
@@ -307,14 +319,8 @@ class ScenarioActivity : AppCompatActivity() {
                 for (j in mGattCharacteristics[i].indices) {
 //                    System.err.println("my найденные характеристики " + i + " " + j + " :" + mGattCharacteristics[i][j].uuid.toString() + "    искомая: " + uuid)
                     if (mGattCharacteristics[i][j].uuid.toString() == uuid) {
-//                        System.err.println("my нужная характеристика найдена")
+                        System.err.println("my нужная характеристика найдена : "+mGattCharacteristics[i][j].uuid)
                         val mCharacteristic = mGattCharacteristics[i][j]
-//                        if (mBluetoothAdapter == null ) {
-////                            System.err.println("my mBluetoothAdapter = null")
-//                            return false
-//                        } else {
-////                            System.err.println("my mBluetoothAdapter существуют")
-//                        }
 
                         mBluetoothLeService!!.setCharacteristicNotification(
                             mCharacteristic, true)
@@ -329,7 +335,6 @@ class ScenarioActivity : AppCompatActivity() {
             while (subscribeThreadFlag) {
                 runOnUiThread {
                     bleCommand(MIO_MEASUREMENT_NEW_VM)
-//                    System.err.println("my startSubscribeSensorsDataThread попытка подписки")
                 }
                 try {
                     Thread.sleep(500)
