@@ -267,8 +267,8 @@ class ScenarioListFragment : Fragment(), PermissionsDialogFragment.PermissionDia
 
         showMediaProjectionWarning()
         //
-        val started = scenarioViewModel.loadScenario(requireContext(), 1, null, scenario)
-        if (started) activity?.finish()
+//        val started = scenarioViewModel.loadScenario(requireContext(), 1, null, scenario)
+//        if (started) activity?.finish()
 //        else Toast.makeText(requireContext(), R.string.toast_denied_foreground_permission, Toast.LENGTH_SHORT).show()
     }
 
