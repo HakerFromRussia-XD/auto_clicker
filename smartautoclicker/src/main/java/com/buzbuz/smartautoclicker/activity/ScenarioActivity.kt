@@ -129,7 +129,7 @@ class ScenarioActivity : AppCompatActivity() {
     /** The repository for the pro mode billing. */
     private val scenarioTransmit: ScenarioTransmit = IScenarioTransmit.getScenarioTransmit()
 
-    @RequiresApi(Build.VERSION_CODES.O)
+
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -145,12 +145,12 @@ class ScenarioActivity : AppCompatActivity() {
 //        bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE)
 
         // foreground service
-        val serviceIntent = Intent(
-            this,
-            BluetoothLeService::class.java
-        )
-        startService(serviceIntent)
-//        startForegroundService(serviceIntent)
+        val serviceIntent = Intent(this, BluetoothLeService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent)
+        } else {
+            startService(serviceIntent)
+        }
 
 //        registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter())
 

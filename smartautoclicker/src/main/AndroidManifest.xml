@@ -77,10 +77,8 @@
             </intent-filter>
             <meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibilityservice" />
         </service>
-<!--        <service android:name="com.buzbuz.smartautoclicker.my.BluetoothLeService"-->
-<!--            android:enabled="true"-->
-<!--            android:stopWithTask="false"-->
-<!--            android:exported="false"/>-->
+        <service android:name="com.buzbuz.smartautoclicker.my.BluetoothLeService"
+            android:enabled="true"/>
 
     </application>
 

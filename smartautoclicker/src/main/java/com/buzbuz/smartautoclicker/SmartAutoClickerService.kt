@@ -18,6 +18,15 @@ package com.buzbuz.smartautoclicker
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
+import android.annotation.SuppressLint
+import android.app.*
+import android.bluetooth.BluetoothGatt
+import android.bluetooth.BluetoothGattCallback
+import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothProfile
+import com.buzbuz.smartautoclicker.my.SampleGattAttributes.MIO_MEASUREMENT_NEW_VM
+import com.buzbuz.smartautoclicker.my.SampleGattAttributes.READ
+import com.buzbuz.smartautoclicker.my.SampleGattAttributes.WRITE
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -205,16 +214,6 @@ class SmartAutoClickerService : AccessibilityService(), AndroidExecutor {
         serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
         LOCAL_SERVICE_INSTANCE = LocalService()
         Log.d("my", "SmartAutoClickerService started")
-//        Log.d("my", "BluetoothLeService started")
-//        Thread {
-//            while (informThread) {
-//                Log.d("TAG", "SmartAutoClickerService Foreground Service is running...")
-//                try {
-//                    Thread.sleep(2000)
-//                } catch (ignored: InterruptedException) {
-//                }
-//            }
-//        }.start()
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
@@ -222,7 +221,6 @@ class SmartAutoClickerService : AccessibilityService(), AndroidExecutor {
         LOCAL_SERVICE_INSTANCE = null
         serviceScope?.cancel()
         serviceScope = null
-//        informThread = false
         Log.d("my", "SmartAutoClickerService onUnbind")
         return super.onUnbind(intent)
     }
