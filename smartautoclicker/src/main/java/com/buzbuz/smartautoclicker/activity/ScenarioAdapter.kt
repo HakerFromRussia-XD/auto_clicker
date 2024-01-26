@@ -141,7 +141,6 @@ class ScenarioViewHolder(
             buttonExport.visibility = View.GONE
         }
 
-
         buttonStart.setOnClickListener { startScenarioListener(scenarioItem.scenario) }
         buttonDelete.setOnClickListener { deleteScenarioListener(scenarioItem.scenario) }
         buttonExport.setOnClickListener { exportClickListener(scenarioItem.scenario) }
