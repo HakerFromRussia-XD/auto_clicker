@@ -78,7 +78,6 @@ import androidx.core.app.NotificationCompat;
 
 import com.buzbuz.smartautoclicker.R;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -98,9 +97,29 @@ public class BluetoothLeService extends Service {
     public final static String ACTION_GATT_SERVICES_DISCOVERED = "com.example.bluetooth.le.ACTION_GATT_SERVICES_DISCOVERED";
     public final static String ACTION_DATA_AVAILABLE = "com.example.bluetooth.le.ACTION_DATA_AVAILABLE";
     public final static String CHARACTERISTIC_UUID = "com.example.bluetooth.le.CHARACTERISTIC_UUID";
+    public final static String MIO_DATA = "com.example.bluetooth.le.MIO_DATA";
+    public final static String FESTO_A_DATA = "com.example.bluetooth.le.FESTO_A_DATA";
+    public final static String OPEN_MOTOR_DATA = "com.example.bluetooth.le.OPEN_MOTOR_DATA";
+    public final static String CLOSE_MOTOR_DATA = "com.example.bluetooth.le.CLOSE_MOTOR_DATA";
+    public final static String SHUTDOWN_CURRENT_HDLE = "com.example.bluetooth.le.SHUTDOWN_CURRENT_HDLE";
     public final static String SENSORS_DATA_THREAD_FLAG = "com.example.bluetooth.le.SENSORS_DATA_THREAD_FLAG";
 
     public final static String MIO_DATA_NEW = "com.example.bluetooth.le.MIO_DATA_NEW";
+    public final static String SENS_VERSION_NEW_DATA = "com.example.bluetooth.le.SENS_VERSION_NEW_DATA";
+    public final static String OPEN_THRESHOLD_NEW_DATA = "com.example.bluetooth.le.OPEN_THRESHOLD_NEW_DATA";
+    public final static String CLOSE_THRESHOLD_NEW_DATA = "com.example.bluetooth.le.CLOSE_THRESHOLD_NEW_DATA";
+    public final static String SENS_OPTIONS_NEW_DATA = "com.example.bluetooth.le.SENS_OPTIONS_NEW_DATA";
+    public final static String SET_GESTURE_NEW_DATA = "com.example.bluetooth.le.SET_GESTURE_NEW_DATA";
+    public final static String SET_REVERSE_NEW_DATA = "com.example.bluetooth.le.SET_REVERSE_NEW_DATA";
+    public final static String ADD_GESTURE_NEW_DATA = "com.example.bluetooth.le.ADD_GESTURE_NEW_DATA";
+    public final static String CALIBRATION_NEW_DATA = "com.example.bluetooth.le.CALIBRATION_NEW_DATA";
+    public final static String SET_ONE_CHANNEL_NEW_DATA = "com.example.bluetooth.le.SET_ONE_CHANNEL_NEW_DATA";
+    public final static String STATUS_CALIBRATION_NEW_DATA = "com.example.bluetooth.le.STATUS_CALIBRATION_NEW_DATA";
+    public final static String CHANGE_GESTURE_NEW_DATA = "com.example.bluetooth.le.CHANGE_GESTURE_NEW_DATA";
+    public final static String TELEMETRY_NUMBER_NEW_DATA = "com.example.bluetooth.le.TELEMETRY_NUMBER_NEW_DATA";
+    public final static String SHUTDOWN_CURRENT_NEW_DATA = "com.example.bluetooth.le.SHUTDOWN_CURRENT_NEW_DATA";
+    public final static String ROTATION_GESTURE_NEW_VM_DATA = "com.example.bluetooth.le.ROTATION_GESTURE_NEW_VM_DATA";
+    public final static String DRIVER_VERSION_NEW_DATA = "com.example.bluetooth.le.DRIVER_VERSION_NEW_DATA";
 
     private void broadcastUpdate(final BluetoothGattCharacteristic characteristic, final String state) {
         final Intent intent = new Intent(BluetoothLeService.ACTION_DATA_AVAILABLE);
@@ -109,12 +128,14 @@ public class BluetoothLeService extends Service {
 
         if (data != null && data.length > 0) {
             if (state.equals(WRITE)) { intent.putExtra(CHARACTERISTIC_UUID, String.valueOf(characteristic.getUuid())); }
-            if (String.valueOf(characteristic.getUuid()).equals(MIO_MEASUREMENT_NEW_VM)) {
-                intent.putExtra(MIO_DATA_NEW, data);
-                intent.putExtra(SENSORS_DATA_THREAD_FLAG, false);
-                Log.d("my", "BluetoothLeService broadcastUpdate data = " + Arrays.toString(data));
-            }
 
+            if (String.valueOf(characteristic.getUuid()).equals(MIO_MEASUREMENT_NEW_VM)) {
+//                System.err.println("MIO_DATA_NEW from service data=" + data[0]);
+                Log.d("my", "BluetoothLeService MIO_MEASUREMENT_NEW_VM");
+                intent.putExtra(MIO_DATA_NEW, data);
+                intent.putExtra(ACTION_STATE, READ);
+                intent.putExtra(SENSORS_DATA_THREAD_FLAG, false);
+            }
         }
         sendBroadcast(intent);
     }
@@ -196,19 +217,19 @@ public class BluetoothLeService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d("my", "BluetoothLeService started");
-        new Thread(
-                () -> {
-                    while (true){
+//        new Thread(
+//                () -> {
+//                    while (true){
 //                        Log.d("my", "BluetoothLeService Foreground Service is running...");
-
-                        try {
-                            Thread.sleep(2000);
-                        } catch (InterruptedException ignored) {
-
-                        }
-                    }
-                }
-        ).start();
+//
+//                        try {
+//                            Thread.sleep(2000);
+//                        } catch (InterruptedException ignored) {
+//
+//                        }
+//                    }
+//                }
+//        ).start();
 
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
