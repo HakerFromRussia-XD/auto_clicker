@@ -26,7 +26,6 @@
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appBarLayout"
         style="@style/AppTheme.Widget.AppBarLayout"
-        android:layout_marginTop="2dp"
         app:liftOnScrollTargetViewId="@id/list"
         app:liftOnScroll="true">
 
@@ -38,7 +37,6 @@
             app:menu="@menu/menu_scenario_fragment" />
 
     </com.google.android.material.appbar.AppBarLayout>
-
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/layout_empty"
