@@ -168,8 +168,8 @@ abstract class OverlayMenu : BaseOverlay(recreateOnRotation = false) {
         overlayLayoutParams = onCreateOverlayViewLayoutParams()
 
         // Set the clicks listener on the menu items
-        menuBackground = menuLayout.findViewById<ViewGroup>(R.id.menu_background)
-        buttonsContainer = menuLayout.findViewById<ViewGroup>(R.id.menu_items)
+        menuBackground = menuLayout.findViewById(R.id.menu_background)
+        buttonsContainer = menuLayout.findViewById(R.id.menu_items)
         setupButtons(buttonsContainer)
 
         // Setup the touch event handler for the move button

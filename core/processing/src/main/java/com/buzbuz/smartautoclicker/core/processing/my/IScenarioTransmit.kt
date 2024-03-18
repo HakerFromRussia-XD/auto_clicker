@@ -1,30 +1,28 @@
-package com.buzbuz.smartautoclicker.my
+package com.buzbuz.smartautoclicker.core.processing.my
 
 import kotlinx.coroutines.flow.Flow
 
+
 interface IScenarioTransmit {
-
     companion object {
-
         /** Singleton preventing multiple instances of the repository at the same time. */
         @Volatile
-        private var INSTANCE: ScenarioTransmit? = null
+        private var INSTANCE: IScenarioTransmit? = null
 
         /**
          * Get the repository singleton, or instantiates it if it wasn't yet.
          *
          * @return the repository singleton.
          */
-        fun getScenarioTransmit(): ScenarioTransmit {
+        fun getScenarioTransmit(): IScenarioTransmit {
             return INSTANCE ?: synchronized(this) {
                 val instance = ScenarioTransmit()
                 INSTANCE = instance
                 instance
             }
         }
-//        lateinit var isActionHappens: MutableStateFlow<Boolean>
     }
 
-//    var isActionHappens: Flow<Boolean>
-    var isInversionOn: Flow<Boolean>
+    var isInversionOn: Flow<Int>
+    var state: Int
 }

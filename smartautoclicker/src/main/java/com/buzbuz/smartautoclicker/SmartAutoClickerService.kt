@@ -19,23 +19,24 @@ package com.buzbuz.smartautoclicker
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.annotation.SuppressLint
+import android.annotation.TargetApi
 import android.app.*
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothGattDescriptor
+import android.bluetooth.BluetoothGattService
+import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
-import com.buzbuz.smartautoclicker.my.SampleGattAttributes.MIO_MEASUREMENT_NEW_VM
-import com.buzbuz.smartautoclicker.my.SampleGattAttributes.READ
-import com.buzbuz.smartautoclicker.my.SampleGattAttributes.WRITE
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
-import android.app.Service
 import android.content.ActivityNotFoundException
+import android.content.ComponentName
 import android.content.Intent
+import android.content.ServiceConnection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
+import android.os.IBinder
 import android.util.AndroidRuntimeException
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
@@ -48,17 +49,23 @@ import com.buzbuz.smartautoclicker.core.display.DisplayMetrics
 import com.buzbuz.smartautoclicker.core.domain.model.scenario.Scenario
 import com.buzbuz.smartautoclicker.core.processing.data.AndroidExecutor
 import com.buzbuz.smartautoclicker.core.processing.domain.DetectionRepository
+import com.buzbuz.smartautoclicker.core.processing.my.IScenarioTransmit
 import com.buzbuz.smartautoclicker.core.ui.overlays.manager.OverlayManager
 import com.buzbuz.smartautoclicker.feature.floatingmenu.ui.MainMenu
+import com.buzbuz.smartautoclicker.my.BluetoothLeService
+import com.buzbuz.smartautoclicker.my.SampleGattAttributes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import java.io.FileDescriptor
 import java.io.PrintWriter
+import java.util.UUID
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
@@ -115,6 +122,20 @@ class SmartAutoClickerService : AccessibilityService(), AndroidExecutor {
             LOCAL_SERVICE_CALLBACK = stateCallback
         }
     }
+
+
+    private var mDeviceAddress = "45:4D:DA:63:8C:07"
+
+    private var mBluetoothManager: BluetoothManager? = null
+    private var mBluetoothAdapter: BluetoothAdapter? = null
+    private var mBluetoothDeviceAddress: String? = null
+    private var mBluetoothGatt: BluetoothGatt? = null
+    private var mGattCharacteristics = ArrayList<ArrayList<BluetoothGattCharacteristic>>()
+    private var subscribeThreadFlag = true
+    enum class PreviousStates { STOP_SLIDE, LEFT_SLIDE, RIGHT_SLIDE }
+    private var previousState = PreviousStates.STOP_SLIDE
+
+    private val scenarioTransmit = IScenarioTransmit.getScenarioTransmit()
 
     private var serviceScope: CoroutineScope? = null
     /** The metrics of the device screen. */
@@ -209,10 +230,19 @@ class SmartAutoClickerService : AccessibilityService(), AndroidExecutor {
         }
     }
 
+    private val mServiceConnection: ServiceConnection = object : ServiceConnection {
+        override fun onServiceConnected(componentName: ComponentName, service: IBinder) {}
+
+        override fun onServiceDisconnected(componentName: ComponentName) {}
+    }
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
         LOCAL_SERVICE_INSTANCE = LocalService()
+
+        initialize()
+        scanLeDevice(true)
         Log.d("my", "SmartAutoClickerService started")
     }
 
@@ -304,8 +334,342 @@ class SmartAutoClickerService : AccessibilityService(), AndroidExecutor {
         overlayManager?.dump(writer, prefix) ?: writer.println("$prefix None")
     }
 
-    override fun onInterrupt() { /* Unused */ }
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) { /* Unused */ }
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
+
+    override fun onInterrupt() {}
+
+
+
+    @SuppressLint("MissingPermission")
+    private fun scanLeDevice(enable: Boolean) {
+        if (mBluetoothAdapter != null) {
+            if (enable) {
+                System.err.println("my scanLeDevice mBluetoothAdapter enable = true")
+                mBluetoothAdapter!!.startLeScan(mLeScanCallback)
+            } else {
+                System.err.println("my scanLeDevice mBluetoothAdapter  enable = false")
+                mBluetoothAdapter!!.stopLeScan(mLeScanCallback)
+            }
+        } else {
+            System.err.println("my scanLeDevice mBluetoothAdapter == null")
+        }
+    }
+    @SuppressLint("NewApi", "MissingPermission")
+    @TargetApi(Build.VERSION_CODES.M)
+    private val mLeScanCallback =
+        BluetoothAdapter.LeScanCallback { device: BluetoothDevice, rssi: Int, scanRecord: ByteArray? ->
+            if (device.name != null) {
+                System.err.println("my scanLeDevice Callback ${device.name} : ${device.address}")
+                if (device.name.contains("FEST-X")) {
+                    mDeviceAddress = device.address
+                    scanLeDevice(false)
+                    connect(mDeviceAddress)
+                }
+            }
+        }
+
+    // Implements callback methods for GATT events that the app cares about.  For example,
+    // connection change and services discovered.
+    private val mGattCallback: BluetoothGattCallback = object : BluetoothGattCallback() {
+        @SuppressLint("MissingPermission")
+        override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
+            if (newState == BluetoothProfile.STATE_CONNECTED) {
+                Log.d("my", "STATE_CONNECTED")
+                actionUpdate(BluetoothLeService.ACTION_GATT_CONNECTED)
+                mBluetoothGatt!!.discoverServices()
+            } else
+            if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                Log.d("my", "ACTION_GATT_DISCONNECTED")
+                actionUpdate(BluetoothLeService.ACTION_GATT_DISCONNECTED)
+            }
+        }
+
+        @SuppressLint("MissingPermission")
+        override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
+            System.err.println("my вошли в onServicesDiscovered status = $status")
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                actionUpdate(BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    mBluetoothGatt!!.setPreferredPhy(
+                        BluetoothDevice.PHY_LE_2M_MASK,
+                        BluetoothDevice.PHY_LE_2M_MASK,
+                        BluetoothDevice.PHY_OPTION_NO_PREFERRED
+                    )
+                }
+            }
+        }
+
+        override fun onCharacteristicRead(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            status: Int
+        ) {
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                actionUpdate(characteristic, SampleGattAttributes.READ)
+            }
+        }
+
+        override fun onCharacteristicWrite(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            status: Int
+        ) {
+            super.onCharacteristicWrite(gatt, characteristic, status)
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                actionUpdate(characteristic, SampleGattAttributes.WRITE)
+            } else if (status == BluetoothGatt.GATT_FAILURE) {
+                System.err.println("запись не удалась")
+            }
+        }
+
+        override fun onCharacteristicChanged(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic
+        ) {
+            actionUpdate(characteristic, SampleGattAttributes.NOTIFY)
+        }
+    }
+
+    private fun actionUpdate (action: String) {
+        when {
+            BluetoothLeService.ACTION_GATT_CONNECTED == action -> {
+                Log.d("my", "actionUpdate ACTION_GATT_CONNECTED")
+            }
+            BluetoothLeService.ACTION_GATT_DISCONNECTED == action -> {
+                Log.d("my", "actionUpdate ACTION_GATT_DISCONNECTED")
+                subscribeThreadFlag = true
+                disconnect()
+                initialize()
+                scanLeDevice(true)
+            }
+            BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED == action -> {
+//                Log.d("my", "actionUpdate ACTION_GATT_SERVICES_DISCOVERED")
+                Log.d("my", "CONNECTING!!!  $mDeviceAddress")
+                displayGattServices(getSupportedGattServices())
+                startSubscribeSensorsDataThread()
+            }
+        }
+    }
+
+    // Demonstrates how to iterate through the supported GATT Services/Characteristics.
+    // In this sample, we populate the data structure that is bound to the ExpandableListView
+    // on the UI.
+    private fun displayGattServices(gattServices: List<BluetoothGattService?>?) {
+        if (gattServices == null) return
+        var uuid: String?
+        val unknownServiceString = ("unknown_service")
+        val unknownCharaString =("unknown_characteristic")
+        val gattServiceData = ArrayList<HashMap<String, String?>>()
+        val gattCharacteristicData = ArrayList<ArrayList<HashMap<String, String?>>>()
+        mGattCharacteristics = ArrayList()
+
+
+        // Loops through available GATT Services.
+        for (gattService in gattServices) {
+            val currentServiceData = HashMap<String, String?>()
+            uuid = gattService?.uuid.toString()
+            currentServiceData["NAME"] = SampleGattAttributes.lookup(uuid, unknownServiceString)
+            currentServiceData["UUID"] = uuid
+            gattServiceData.add(currentServiceData)
+            val gattCharacteristicGroupData = ArrayList<HashMap<String, String?>>()
+            val gattCharacteristics = gattService?.characteristics
+            val charas = ArrayList<BluetoothGattCharacteristic>()
+
+            // Loops through available Characteristics.
+            if (gattCharacteristics != null) {
+                for (gattCharacteristic in gattCharacteristics) {
+                    charas.add(gattCharacteristic)
+                    val currentCharaData = HashMap<String, String?>()
+                    uuid = gattCharacteristic.uuid.toString()
+                    currentCharaData["NAME"] = SampleGattAttributes.lookup(uuid, unknownCharaString)
+                    currentCharaData["UUID"] = uuid
+                    gattCharacteristicGroupData.add(currentCharaData)
+//                    System.err.println("my ------->   ХАРАКТЕРИСТИКА: $uuid")
+                }
+            }
+            mGattCharacteristics.add(charas)
+            gattCharacteristicData.add(gattCharacteristicGroupData)
+        }
+    }
+
+    private fun startSubscribeSensorsDataThread() {
+        val subscribeThread = Thread {
+            while (subscribeThreadFlag) {
+                bleCommand(SampleGattAttributes.MIO_MEASUREMENT_NEW_VM)
+                try {
+                    Thread.sleep(500)
+                } catch (ignored: Exception) { }
+            }
+        }
+        subscribeThread.start()
+    }
+
+    private fun bleCommand(uuid: String) {
+        Log.d("my", "startSubscribeSensorsDataThread")
+        for (i in mGattCharacteristics.indices) {
+            for (j in mGattCharacteristics[i].indices) {
+                if (mGattCharacteristics[i][j].uuid.toString() == uuid) {
+                    setCharacteristicNotification(mGattCharacteristics[i][j], true)
+                }
+            }
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun actionUpdate (characteristic: BluetoothGattCharacteristic, action: String) {
+        val data = characteristic.value
+
+        if (data != null) {
+            val dataSens1 = castUnsignedCharToInt(data[0])
+            val dataSens2 = castUnsignedCharToInt(data[1])
+            val sensorLevel = 100
+            val rightSlide: Boolean = dataSens1 > sensorLevel
+            val leftSlide: Boolean = dataSens2 > sensorLevel
+
+
+
+            //если решение лететь налево
+            if (rightSlide && leftSlide && previousState == PreviousStates.LEFT_SLIDE || !rightSlide && leftSlide){
+                previousState = PreviousStates.LEFT_SLIDE
+            }
+
+
+            //если решение лететь направо
+            if (rightSlide && leftSlide && previousState == PreviousStates.RIGHT_SLIDE || rightSlide && !leftSlide) {
+                previousState = PreviousStates.RIGHT_SLIDE
+            }
+
+
+            //если решение не поворачивать
+            if (!rightSlide && !leftSlide) {
+                previousState = PreviousStates.STOP_SLIDE
+            }
+
+//            System.err.println("my $previousState")
+
+
+            //TODO отправлять результат
+            /** Tells if the limitation in scenario count have been reached. */
+            if (previousState == PreviousStates.STOP_SLIDE) scenarioTransmit.state = 3
+            if (previousState == PreviousStates.RIGHT_SLIDE) scenarioTransmit.state = 2
+            if (previousState == PreviousStates.LEFT_SLIDE) scenarioTransmit.state = 1
+        }
+
+        subscribeThreadFlag = false
+    }
+
+    /**
+     * Initializes a reference to the local Bluetooth adapter.
+     *
+     * @return Return true if the initialization is successful.
+     */
+    private fun initialize(): Boolean {
+        // For API level 18 and above, get a reference to BluetoothAdapter through
+        // BluetoothManager.
+        if (mBluetoothManager == null) {
+            mBluetoothManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
+            if (mBluetoothManager == null) {
+                return false
+            }
+        }
+        mBluetoothAdapter = mBluetoothManager!!.adapter
+        return mBluetoothAdapter != null
+    }
+
+    /**
+     * Connects to the GATT server hosted on the Bluetooth LE device.
+     *
+     * @param address The device address of the destination device.
+     *
+     * @return Return true if the connection is initiated successfully. The connection result
+     * is reported asynchronously through the
+     * `BluetoothGattCallback#onConnectionStateChange(android.bluetooth.BluetoothGatt, int, int)`
+     * callback.
+     */
+    @SuppressLint("MissingPermission")
+    fun connect(address: String?): Boolean {
+        if (mBluetoothAdapter == null || address == null) {
+            return false
+        }
+
+        // Previously connected device.  Try to reconnect.
+        if (address == mBluetoothDeviceAddress && mBluetoothGatt != null) {
+            return mBluetoothGatt!!.connect()
+        }
+
+        //TODO раскомментить после завершения теста с сохранением имён жестов
+        val device: BluetoothDevice = mBluetoothAdapter!!.getRemoteDevice(address) ?: return false
+        mBluetoothGatt = device.connectGatt(this, false, mGattCallback)
+        mBluetoothDeviceAddress = address
+        return true
+    }
+
+    /**
+     * Disconnects an existing connection or cancel a pending connection. The disconnection result
+     * is reported asynchronously through the
+     * `BluetoothGattCallback#onConnectionStateChange(android.bluetooth.BluetoothGatt, int, int)`
+     * callback.
+     */
+    @SuppressLint("MissingPermission")
+    fun disconnect() {
+        if (mBluetoothAdapter == null || mBluetoothGatt == null) {
+            return
+        }
+        mBluetoothGatt!!.disconnect()
+    }
+
+    /**
+     * After using a given BLE device, the app must call this method to ensure resources are
+     * released properly.
+     */
+    @SuppressLint("MissingPermission")
+    fun close() {
+        if (mBluetoothGatt == null) {
+            return
+        }
+        mBluetoothGatt!!.close()
+        mBluetoothGatt = null
+    }
+
+    /**
+     * Enables or disables notification on a give characteristic.
+     *
+     * @param characteristic Characteristic to act on.
+     * @param enabled If true, enable notification.  False otherwise.
+     */
+    @SuppressLint("MissingPermission")
+    fun setCharacteristicNotification(
+        characteristic: BluetoothGattCharacteristic,
+        enabled: Boolean
+    ) {
+        if (mBluetoothAdapter == null || mBluetoothGatt == null) {
+            return
+        }
+        mBluetoothGatt!!.setCharacteristicNotification(characteristic, enabled)
+        val descriptor = characteristic.getDescriptor(
+            UUID.fromString(SampleGattAttributes.CLIENT_CHARACTERISTIC_CONFIG)
+        )
+        descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+        mBluetoothGatt!!.writeDescriptor(descriptor)
+    }
+
+
+    /**
+     * Retrieves a list of supported GATT services on the connected device. This should be
+     * invoked only after `BluetoothGatt#discoverServices()` completes successfully.
+     *
+     * @return A `List` of supported services.
+     */
+    private fun getSupportedGattServices(): List<BluetoothGattService?>? {
+        return if (mBluetoothGatt == null) null else mBluetoothGatt!!.services
+    }
+    private fun castUnsignedCharToInt(ubyte: Byte): Int {
+        var cast = ubyte.toInt()
+        if (cast < 0) {
+            cast += 256
+        }
+        return cast
+    }
 }
 
 /** Tag for the logs. */

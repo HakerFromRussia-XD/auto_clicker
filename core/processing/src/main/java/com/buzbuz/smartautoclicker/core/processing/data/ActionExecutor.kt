@@ -16,11 +16,11 @@
  */
 package com.buzbuz.smartautoclicker.core.processing.data
 
+import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.content.Intent
 import android.graphics.Path
 import android.util.Log
-
 import com.buzbuz.smartautoclicker.core.domain.model.OR
 import com.buzbuz.smartautoclicker.core.domain.model.action.Action
 import com.buzbuz.smartautoclicker.core.domain.model.action.Action.Click
@@ -31,12 +31,16 @@ import com.buzbuz.smartautoclicker.core.domain.model.action.GESTURE_DURATION_MAX
 import com.buzbuz.smartautoclicker.core.domain.model.action.putDomainExtra
 import com.buzbuz.smartautoclicker.core.domain.model.event.Event
 import com.buzbuz.smartautoclicker.core.processing.data.processor.ProcessingResults
-
+import com.buzbuz.smartautoclicker.core.processing.my.IScenarioTransmit
+import com.buzbuz.smartautoclicker.core.processing.my.ScenarioTransmit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.random.Random
@@ -56,12 +60,8 @@ internal class ActionExecutor(
 
     private val random = Random(System.currentTimeMillis())
 
-//    private val scenarioTransmit: ScenarioTransmit = IScenarioTransmit.getScenarioTransmit()
-//    private val test = IScenarioTransmit.getScenarioTransmit()
-//    private val scenarioTransmit: Flow<Boolean> = IScenarioTransmit.canStartDetection
-//        .combine(editionRepository.isEditionSynchronized) { canStartDetection, isSynchronized ->
-//            canStartDetection && isSynchronized
-//        }
+    /** Object under tests. */
+    private var transmiter = IScenarioTransmit.getScenarioTransmit()
 
     /**
      * Execute the provided actions.
@@ -76,6 +76,7 @@ internal class ActionExecutor(
                 is Pause -> executePause(action)
                 is Action.Intent -> executeIntent(action)
                 is ToggleEvent -> executeToggleEvent(action)
+                else -> {}
             }
         }
     }
@@ -127,16 +128,26 @@ internal class ActionExecutor(
      * Execute the provided swipe.
      * @param swipe the swipe to be executed.
      */
+
     private suspend fun executeSwipe(swipe: Swipe) {
         val swipePath = Path()
         val swipeBuilder = GestureDescription.Builder()
 
 
-        swipePath.moveTo(swipe.fromX!!, swipe.fromY!!, randomize)
-        swipePath.lineTo(swipe.toX!!, swipe.toY!!, randomize)
-        //противоположное по вертикали направление свайпа
-//        swipePath.moveTo(swipe.toX!!, swipe.toY!!, randomize)
-//        swipePath.lineTo(swipe.fromX!!, swipe.fromY!!, randomize)
+        if (transmiter.state == 1) {
+            swipePath.moveTo(swipe.fromX!!, swipe.fromY!!, randomize)
+            swipePath.lineTo(swipe.toX!!, swipe.toY!!, randomize)
+        }
+        if (transmiter.state == 2) {
+            //противоположное по вертикали направление свайпа
+            swipePath.moveTo(swipe.toX!!, swipe.toY!!, randomize)
+            swipePath.lineTo(swipe.fromX!!, swipe.fromY!!, randomize)
+        }
+        if (transmiter.state != 1 && transmiter.state != 2) {
+            //противоположное по вертикали направление свайпа
+            swipePath.moveTo(200, 200, false)
+            swipePath.lineTo(210, 200, false)
+        }
 
         swipeBuilder.addStroke(
             GestureDescription.StrokeDescription(
@@ -146,10 +157,24 @@ internal class ActionExecutor(
             )
         )
 
-        //TODO отключили свайп
-//        withContext(Dispatchers.Main) {
-//            androidExecutor.executeGesture(swipeBuilder.build())
-//        }
+        //TODO тут работа со свайпами
+        withContext(Dispatchers.Main) {
+            if (transmiter.state == 1 || transmiter.state == 2) {
+                androidExecutor.executeGesture(swipeBuilder.build())
+                launch {delay(1)}
+            } else {
+                var stop = true
+                launch {
+                    while (stop) {
+//                        Log.d("my", "СТОИМ!!!")
+                        delay(500)
+                        if (transmiter.state == 1 || transmiter.state == 2) {
+                            stop = false
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /**

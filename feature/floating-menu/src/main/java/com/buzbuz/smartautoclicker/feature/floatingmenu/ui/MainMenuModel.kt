@@ -57,6 +57,8 @@ class MainMenuModel(application: Application) : AndroidViewModel(application) {
     private val repository: Repository = Repository.getRepository(application)
     /** The detection repository. */
     private val detectionRepository: DetectionRepository = DetectionRepository.getDetectionRepository(application)
+//    private val test: IScenarioTransmit
+//    private val test: ScenarioTransmit = IScenarioTransmit
 
     /** The currently loaded scenario info. */
     private val editionRepository: EditionRepository = EditionRepository.getInstance(application)

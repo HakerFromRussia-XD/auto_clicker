@@ -14,42 +14,9 @@
 package com.buzbuz.smartautoclicker.my;
 
 
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.ADD_GESTURE_NEW;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.ADD_GESTURE_NEW_VM;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.CALIBRATION_NEW;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.CALIBRATION_NEW_VM;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.CHANGE_GESTURE_NEW_VM;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.CLOSE_MOTOR_HDLE;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.CLOSE_THRESHOLD_NEW;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.CLOSE_THRESHOLD_NEW_VM;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.DRIVER_VERSION_NEW;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.DRIVER_VERSION_NEW_VM;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.FESTO_A_CHARACTERISTIC;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.MIO_MEASUREMENT;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.MIO_MEASUREMENT_NEW;
 import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.MIO_MEASUREMENT_NEW_VM;
 import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.NOTIFY;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.OPEN_MOTOR_HDLE;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.OPEN_THRESHOLD_NEW;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.OPEN_THRESHOLD_NEW_VM;
 import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.READ;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.ROTATION_GESTURE_NEW_VM;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.SENS_OPTIONS_NEW;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.SENS_OPTIONS_NEW_VM;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.SENS_VERSION_NEW;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.SENS_VERSION_NEW_VM;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.SET_GESTURE_NEW;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.SET_GESTURE_NEW_VM;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.SET_ONE_CHANNEL_NEW;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.SET_ONE_CHANNEL_NEW_VM;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.SET_REVERSE_NEW;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.SET_REVERSE_NEW_VM;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.SHUTDOWN_CURRENT_NEW;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.SHUTDOWN_CURRENT_NEW_VM;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.STATUS_CALIBRATION_NEW;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.STATUS_CALIBRATION_NEW_VM;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.TELEMETRY_NUMBER_NEW;
-import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.TELEMETRY_NUMBER_NEW_VM;
 import static com.buzbuz.smartautoclicker.my.SampleGattAttributes.WRITE;
 
 import android.annotation.SuppressLint;
@@ -73,9 +40,6 @@ import android.os.Build;
 import android.os.IBinder;
 import android.util.Log;
 
-import androidx.annotation.RequiresApi;
-import androidx.core.app.NotificationCompat;
-
 import com.buzbuz.smartautoclicker.R;
 
 import java.util.List;
@@ -83,8 +47,6 @@ import java.util.UUID;
 
 @SuppressLint("MissingPermission")
 public class BluetoothLeService extends Service {
-    private final static String TAG = BluetoothLeService.class.getSimpleName();
-    private Context context;
 
     private BluetoothManager mBluetoothManager;
     private BluetoothAdapter mBluetoothAdapter;
@@ -97,29 +59,9 @@ public class BluetoothLeService extends Service {
     public final static String ACTION_GATT_SERVICES_DISCOVERED = "com.example.bluetooth.le.ACTION_GATT_SERVICES_DISCOVERED";
     public final static String ACTION_DATA_AVAILABLE = "com.example.bluetooth.le.ACTION_DATA_AVAILABLE";
     public final static String CHARACTERISTIC_UUID = "com.example.bluetooth.le.CHARACTERISTIC_UUID";
-    public final static String MIO_DATA = "com.example.bluetooth.le.MIO_DATA";
-    public final static String FESTO_A_DATA = "com.example.bluetooth.le.FESTO_A_DATA";
-    public final static String OPEN_MOTOR_DATA = "com.example.bluetooth.le.OPEN_MOTOR_DATA";
-    public final static String CLOSE_MOTOR_DATA = "com.example.bluetooth.le.CLOSE_MOTOR_DATA";
-    public final static String SHUTDOWN_CURRENT_HDLE = "com.example.bluetooth.le.SHUTDOWN_CURRENT_HDLE";
     public final static String SENSORS_DATA_THREAD_FLAG = "com.example.bluetooth.le.SENSORS_DATA_THREAD_FLAG";
 
     public final static String MIO_DATA_NEW = "com.example.bluetooth.le.MIO_DATA_NEW";
-    public final static String SENS_VERSION_NEW_DATA = "com.example.bluetooth.le.SENS_VERSION_NEW_DATA";
-    public final static String OPEN_THRESHOLD_NEW_DATA = "com.example.bluetooth.le.OPEN_THRESHOLD_NEW_DATA";
-    public final static String CLOSE_THRESHOLD_NEW_DATA = "com.example.bluetooth.le.CLOSE_THRESHOLD_NEW_DATA";
-    public final static String SENS_OPTIONS_NEW_DATA = "com.example.bluetooth.le.SENS_OPTIONS_NEW_DATA";
-    public final static String SET_GESTURE_NEW_DATA = "com.example.bluetooth.le.SET_GESTURE_NEW_DATA";
-    public final static String SET_REVERSE_NEW_DATA = "com.example.bluetooth.le.SET_REVERSE_NEW_DATA";
-    public final static String ADD_GESTURE_NEW_DATA = "com.example.bluetooth.le.ADD_GESTURE_NEW_DATA";
-    public final static String CALIBRATION_NEW_DATA = "com.example.bluetooth.le.CALIBRATION_NEW_DATA";
-    public final static String SET_ONE_CHANNEL_NEW_DATA = "com.example.bluetooth.le.SET_ONE_CHANNEL_NEW_DATA";
-    public final static String STATUS_CALIBRATION_NEW_DATA = "com.example.bluetooth.le.STATUS_CALIBRATION_NEW_DATA";
-    public final static String CHANGE_GESTURE_NEW_DATA = "com.example.bluetooth.le.CHANGE_GESTURE_NEW_DATA";
-    public final static String TELEMETRY_NUMBER_NEW_DATA = "com.example.bluetooth.le.TELEMETRY_NUMBER_NEW_DATA";
-    public final static String SHUTDOWN_CURRENT_NEW_DATA = "com.example.bluetooth.le.SHUTDOWN_CURRENT_NEW_DATA";
-    public final static String ROTATION_GESTURE_NEW_VM_DATA = "com.example.bluetooth.le.ROTATION_GESTURE_NEW_VM_DATA";
-    public final static String DRIVER_VERSION_NEW_DATA = "com.example.bluetooth.le.DRIVER_VERSION_NEW_DATA";
 
     private void broadcastUpdate(final BluetoothGattCharacteristic characteristic, final String state) {
         final Intent intent = new Intent(BluetoothLeService.ACTION_DATA_AVAILABLE);
@@ -247,14 +189,6 @@ public class BluetoothLeService extends Service {
         return super.onStartCommand(intent, flags, startId);
     }
 
-    private void start() {
-        Notification notification = new Notification();
-        notification.iconLevel = R.drawable.ic_load;
-//        NotificationCompat.Builder(this,"running_channel");
-//        notification.setSmallIcon(R.drawable.ic_l)
-        startForeground(1, notification);
-    }
-
     @Override
     public boolean onUnbind(Intent intent) {
         // After using a given device, you should make sure that BluetoothGatt.close() is called
@@ -343,34 +277,6 @@ public class BluetoothLeService extends Service {
         }
         mBluetoothGatt.close();
         mBluetoothGatt = null;
-    }
-
-    /**
-     * Request a read on a given {@code BluetoothGattCharacteristic}. The read result is reported
-     * asynchronously through the {@code BluetoothGattCallback#onCharacteristicRead(android.bluetooth.BluetoothGatt, android.bluetooth.BluetoothGattCharacteristic, int)}
-     * callback.
-     *
-     * @param characteristic The characteristic to read from.
-     */
-    public void readCharacteristic(BluetoothGattCharacteristic characteristic) {
-        if (mBluetoothAdapter == null || mBluetoothGatt == null) {
-            return;
-        }
-        mBluetoothGatt.readCharacteristic(characteristic);
-    }
-
-    /**
-     * Request a write {@code BluetoothGattCharacteristic}. The read result is reported
-     * asynchronously through the {@code BluetoothGattCallback#onCharacteristicRead(android.bluetooth.BluetoothGatt, android.bluetooth.BluetoothGattCharacteristic, int)}
-     * callback.
-     *
-     * @param characteristic The characteristic a write.
-     */
-    public void writeCharacteristic(BluetoothGattCharacteristic characteristic) {
-        if (mBluetoothAdapter == null || mBluetoothGatt == null) {
-            return;
-        }
-        mBluetoothGatt.writeCharacteristic(characteristic);
     }
 
     /**
